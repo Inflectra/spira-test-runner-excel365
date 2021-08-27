@@ -1,0 +1,223 @@
+ /*
+ * ===============
+ * UTILITY CLASSES
+ * ===============
+ */
+ 
+ * {box-sizing: border-box;}
+.flex { display: flex; }
+.hidden { display: none; }
+.open { right: 0px !important; }
+.clearfix { overflow: auto; }
+.pb-md { padding-bottom: 1.5rem; }
+.pb-lg { padding-bottom: 3rem; }
+.pt-md { padding-top: 1.5rem; }
+.pt-lg { padding-top: 3rem; }
+.mb-0 { margin-bottom: 0; }
+.mb-sm { margin-bottom: .75rem; }
+.mb-md { margin-bottom: 1.5rem; }
+.mb-lg { margin-bottom: 3rem; }
+.mt-0 { margin-top: 0; }
+.mt-sm { margin-top: .75rem; }
+.mt-md { margin-top: 1.5rem; }
+.mt-lg { margin-top: 3rem; }
+.ma-0 {margin: 0;}
+/*
+ * ==========
+ * PAGE PARTS
+ * ==========
+ */
+ 
+ body {
+    background-color: white;
+    font-family: Arial;
+    overflow-x: hidden;
+    overflow-y: none;
+    width: 100vw;
+}
+.header {
+    align-items: center;
+    display: flex;
+    padding: 10px 5px;
+}
+.header-heading {
+    margin: 0 0 0 1rem;
+}
+.header-logo {
+    height: 40px;
+    width: 40px;
+}
+.panel {
+    background-color: white;
+    height: calc(100vh - 100px); /* 150 leaves space around header and footer */
+    left: 0;
+    overflow-y: auto;
+    padding: 1rem;
+    position: absolute;
+    transition: left 0.2s;
+    visibility: visible;
+    width: 100vw
+}
+.panel.offscreen {
+    left: 100%;
+    visibility: hidden;
+}
+.footer {
+    bottom: 0;
+    padding: .25rem 1rem;
+    position: fixed;
+}
+.footer-logo {
+    height: 25px;
+}
+/*
+ * ===========================
+ * FORMS AND SPECIFIC ELEMENTS
+ * ===========================
+ */
+.form {
+    margin: 0;
+    padding: 0;
+}
+.form-pair {
+    list-style-type: none;
+    margin-bottom: 0;
+}
+.form-label, 
+.form-input {
+    display: block;
+}
+.form-label {
+    font-size: .9em;
+}
+.form-input {
+    width: 100%;
+}
+
+.mt-md {
+    display: block;
+    position: relative;
+}
+
+.mt-md div {
+    display: inline-flex;
+    margin: 0 0.4rem;
+    position: absolute;
+}
+
+.mt-md div p {
+    position: relative;
+    top: -15px;
+    left: 7px;
+   size: 0.4rem;
+   font-weight: bold;
+   color: white;
+ 
+}
+
+.circleHelp:hover + .helpBox{
+    visibility: visible;
+}
+
+.circleHelp:hover {
+    background-color: rgb(0, 90, 158);
+}
+
+
+
+.helpBox {
+    position: absolute;
+    max-width: 80%;
+    border: 1px solid rgb(180, 180, 180);
+    background-color: rgb(255, 255, 200);
+    border-radius: 8px;
+    left: 10%;
+    top: 30px;
+    padding: 8px;
+    visibility: hidden;
+    z-index: 10;
+}
+
+
+
+.circleHelp {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background-color:#0078d7;
+}
+
+
+pre {
+    background: #f5f5f5;
+    border-radius: 4px;
+    padding: .5rem;
+}
+.list {
+    padding-left: 20px;
+}
+.pale { opacity: .5;}
+
+.well {
+    background-color: #f1f1f1;
+    padding: .5rem;
+    border-radius: .5rem;
+    border: 1px solid #ddd;
+    margin: 0;
+}
+.secondary {
+    color: #777;
+}
+
+/* excel specific */
+.ms-office .ms-Button.create {
+    box-shadow: 0 3px 0 #0078d7;
+    border-color: transparent;
+}
+.ms-office button:disabled {
+    opacity: .5;
+}
+
+/*
+ * ======
+ * LOADER
+ * ======
+ */
+.loader-box {
+    background-color: rgba(191, 191, 191, 0.4);
+    z-index: 1000;
+    position: absolute;
+    top: 0;
+    height: 97%;
+    width: 100%;
+}
+.loader {
+    position: absolute;
+    left: 65%;
+    top: 50%;
+    margin: -75px 0 0 -75px;
+    border: 4px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 4px solid #000;
+    border-bottom: 4px solid #000;
+    width: 50px;
+    height: 50px;
+    -webkit-animation: spin 2s linear infinite;
+    animation: spin 2s linear infinite;
+}
+@-webkit-keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(360deg);
+    }
+}
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
