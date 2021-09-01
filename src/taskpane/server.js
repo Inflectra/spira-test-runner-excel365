@@ -40,6 +40,7 @@ import { params } from './model.js';
 
 // globals
 var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
+  API_URL_BASE = '/services/v6_0/RestService.svc/',
   API_PROJECT_BASE_NO_SLASH = '/services/v6_0/RestService.svc/projects',
   API_TEMPLATE_BASE = '/services/v6_0/RestService.svc/project-templates/',
   ART_ENUMS = {
@@ -399,52 +400,40 @@ function getUsers(currentUser, projectId) {
 
 
 function getArtifacts(user, projectId, artifactTypeId, startRow, numberOfRows, artifactId) {
-  var fullURL = API_PROJECT_BASE + projectId;
+  var fullURL = '';
   var response = null;
 
   switch (artifactTypeId) {
-    case ART_ENUMS.requirements:
-      fullURL += "/requirements?starting_row=" + startRow + "&number_of_rows=" + numberOfRows + "&sort_field=RequirementId&sort_direction=ASC&";
-      response = fetcher(user, fullURL);
-      break;
-    case ART_ENUMS.testCases:
-      fullURL += "/test-cases?starting_row=" + startRow + "&number_of_rows=" + numberOfRows + "&sort_field=TestCaseId&sort_direction=ASC&";
+    case ART_ENUMS.testRuns:
+      fullURL += API_URL_BASE + "test-cases?starting_row=" + startRow + "&number_of_rows=" + numberOfRows + "&sort_field=TestCaseId&sort_direction=ASC&";
       response = fetcher(user, fullURL);
       break;
     case ART_ENUMS.testSteps:
       if (artifactId) {
-        fullURL += "/test-cases/" + artifactId + "/test-steps?&";
+        fullURL += API_PROJECT_BASE + projectId + "/test-cases/" + artifactId + "/test-steps?&";
         response = fetcher(user, fullURL);
       }
       break;
-    case ART_ENUMS.incidents:
-      fullURL += "/incidents/search?start_row=" + startRow + "&number_rows=" + numberOfRows + "&sort_field=Name&sort_direction=ASC&";
+    case ART_ENUMS.testSets:
+      if (artifactId == null) {
+        fullURL += API_URL_BASE + "/test-sets?starting_row=" + startRow + "&number_of_rows=" + numberOfRows + "&sort_field=TestSetId&sort_direction=ASC&";
+        response = fetcher(user, fullURL);
+      }
+      else {
+        fullURL += API_PROJECT_BASE + projectId + "/test-sets/" + artifactId + "/test-case-mapping?&";
+        response = fetcher(user, fullURL);
+      }
+
+      break;
+    case ART_ENUMS.testCases:
+      fullURL += API_PROJECT_BASE + projectId + "/test-cases/" + artifactId + "?&";
       response = fetcher(user, fullURL);
       break;
-    case ART_ENUMS.releases:
-      fullURL += "/releases/search?start_row=" + startRow + "&number_rows=" + numberOfRows + "&sort_field=ReleaseId&sort_direction=ASC&";
-      var rawResponse = poster("", user, fullURL);
-      response = IS_GOOGLE ? JSON.parse(rawResponse) : rawResponse; // this particular return needs to be parsed here
-      break;
-    case ART_ENUMS.tasks:
-      fullURL += "/tasks?starting_row=" + startRow + "&number_of_rows=" + numberOfRows + "&sort_field=TaskId&sort_direction=ASC&";
-      var rawResponse = poster("", user, fullURL);
-      response = IS_GOOGLE ? JSON.parse(rawResponse) : rawResponse; // this particular return needs to be parsed here
-      break;
-    case ART_ENUMS.risks:
-      fullURL += "/risks?starting_row=" + startRow + "&number_of_rows=" + numberOfRows + "&sort_field=RiskId&sort_direction=ASC&";
-      var rawResponse = poster("", user, fullURL);
-      response = IS_GOOGLE ? JSON.parse(rawResponse) : rawResponse; // this particular return needs to be parsed here
-      break;
-    case ART_ENUMS.testSets:
-      fullURL += "/test-sets?starting_row=" + startRow + "&number_of_rows=" + numberOfRows + "&sort_field=TestSetId&sort_direction=ASC&";
-      var rawResponse = fetcher(user, fullURL);
-      response = IS_GOOGLE ? JSON.parse(rawResponse) : rawResponse; // this particular return needs to be parsed here
-      break;
   }
+  console.log('fetcher response');
+  console.dir(response);
   return response;
 }
-
 
 
 
@@ -939,6 +928,17 @@ function templateLoader(model, fieldTypeEnums, advancedMode) {
 
       //reset the hidden status of the spreadsheet
       var range = sheet.getRangeByIndexes(0, 0, 1, EXCEL_MAX_ROWS);
+
+      var rangeBorder = sheet.getRangeByIndexes(0, 0, EXCEL_MAX_ROWS, Object.keys(fields).length);
+
+      //setting cell borders
+      rangeBorder.format.borders.getItem('InsideHorizontal').weight = "Thin";
+      rangeBorder.format.borders.getItem('InsideVertical').weight = "Thin";
+      rangeBorder.format.borders.getItem('EdgeBottom').weight = "Thin";
+      rangeBorder.format.borders.getItem('EdgeLeft').weight = "Thin";
+      rangeBorder.format.borders.getItem('EdgeRight').weight = "Thin";
+      rangeBorder.format.borders.getItem('EdgeTop').weight = "Thin";
+
       range.columnHidden = false;
 
       var worksheets = context.workbook.worksheets;
@@ -1432,6 +1432,19 @@ function contentFormattingSetter(sheet, model) {
 
     }
 
+    // green background for test run fields
+    if (model.fields[i].isRunField) {
+      var warning = "";
+      warning = model.fields[i].name + " is hidden";
+      changeColorColumn(
+        sheet,
+        columnNumber,
+        nonHeaderRows,
+        model.colors.bgRunField
+      );
+
+    }
+
   }
 }
 
@@ -1508,6 +1521,26 @@ function hideColumn(sheet, columnNumber, rowLength, bgColor) {
   }
 }
 
+// change a specific column background color
+// @param: sheet - the sheet object
+// @param: columnNumber - int of column to hide
+// @param: rowLength - int of default number of rows to apply any formattting to
+// @param: bgColor - string color to set on background as hex code (eg '#ffffff')
+function changeColorColumn(sheet, columnNumber, rowLength, bgColor) {
+  // only for google as cannot protect individual cells easily in Excel
+  if (IS_GOOGLE) {
+
+    sheet.hideColumns(columnNumber);
+
+  } else {
+    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
+
+    // set the background color
+    range.set({ format: { fill: { color: bgColor } } });
+
+  }
+}
+
 // resets backgroung colors to its original - used before a GET command
 // @param: sheetName - current sheet name
 
@@ -1540,17 +1573,20 @@ function resetSheetColors(model, fieldTypeEnums, sheetRangeOld) {
       var subColumnRange = range.getColumn(j);
       var fieldType = fields[j].type;
       var isReadOnly = fields[j].isReadOnly;
+      var isRunField = fields[j].isRunField;
       var bgColor;
 
       if (fieldType == fieldTypeEnums.id || fieldType == fieldTypeEnums.subId || isReadOnly) {
-
         subColumnRange.format.fill.color = model.colors.bgReadOnly;
       }
       else {
-
-        subColumnRange.format.fill.clear();
+        if (isRunField) {
+          subColumnRange.format.fill.color = model.colors.bgRunField;
+        }
+        else {
+          subColumnRange.format.fill.clear();
+        }
       }
-
     }
     range.delete(Excel.DeleteShiftDirection.up);
     return ctx.sync();
@@ -3301,132 +3337,7 @@ function processSendToSpiraResponse(i, sentToSpira, entriesForExport, artifact, 
   return log;
 }
 
-
-
-
-
-
-
-
-
-/*
- * ==================
- * GETTING FROM SPIRA
- * ==================
- *
- * get all items of an artifact and place contents in the sheet
- *
- */
-
-// GOOGLE SPECIFIC VARIATION OF THIS FUNCTION handles getting paginated artifacts from Spira and saving them as a single array
-// @param: model - full model object from client
-// @param: fieldTypeEnums - enum of fieldTypes used
-function getFromSpiraGoogle(model, fieldTypeEnums) {
-  var requiredSheetName = model.currentArtifact.name + ", PR-" + model.currentProject.id;
-  if (sheet.getName() != requiredSheetName) {
-    return operationComplete(STATUS_ENUM.wrongSheet, false);
-  }
-
-  // 1. get from spira
-  // note we don't do this by getting the count of each artifact first, because of a bug in getting the release count
-  var currentPage = 0;
-  var artifacts = [];
-  var getNextPage = true;
-
-  while (getNextPage && currentPage < 100) {
-    var startRow = (currentPage * GET_PAGINATION_SIZE) + 1;
-    var pageOfArtifacts = getArtifacts(
-      model.user,
-      model.currentProject.id,
-      model.currentArtifact.id,
-      startRow,
-      GET_PAGINATION_SIZE,
-      null
-    );
-    // if we got a non empty array back then we have artifacts to process
-    if (pageOfArtifacts.length) {
-      artifacts = artifacts.concat(pageOfArtifacts);
-      // if we got less artifacts than the max we asked for, then we reached the end of the list in this request - and should stop
-      if (pageOfArtifacts.length < GET_PAGINATION_SIZE) {
-        getNextPage = false;
-        // if we got the full page size back then there may be more artifacts to get
-      } else {
-        currentPage++;
-      }
-      // if we got no artifacts back, stop now
-    } else {
-      getNextPage = false;
-    }
-  }
-
-  // 2. if there were no artifacts at all break out now
-  if (!artifacts.length) return "no artifacts were returned";
-
-  // 3. Make sure hierarchical artifacts are ordered correctly
-  if (model.currentArtifact.hierarchical) {
-    artifacts.sort(function (a, b) {
-      return a.indentLevel < b.indentLevel ? -1 : 1;
-    });
-  }
-
-
-  // 4. if artifact has subtype that needs to be retrieved separately, do so
-  if (model.currentArtifact.hasSubType) {
-    // find the id field
-    var idFieldNameArray = model.fields.filter(function (field) {
-      return field.type === fieldTypeEnums.id;
-    });
-    // if we have an id field, then we can find the id number for each artifact in the array
-    if (idFieldNameArray && idFieldNameArray[0].field) {
-      var idFieldName = idFieldNameArray[0].field;
-      var artifactsWithSubTypes = [];
-      artifacts.forEach(function (art) {
-        artifactsWithSubTypes.push(art);
-        var subTypeArtifacts = getArtifacts(
-          model.user,
-          model.currentProject.id,
-          model.currentArtifact.subTypeId,
-          null,
-          null,
-          art[idFieldName]
-        );
-        // take action if we got any sub types back - ie if they exist for the specific artifact
-        if (subTypeArtifacts && subTypeArtifacts.length) {
-          var subTypeArtifactsWithMeta = subTypeArtifacts.map(function (sub) {
-            sub.isSubType = true;
-            sub.parentId = art[idFieldName];
-            return sub;
-          });
-          // now add the steps into the original object
-          artifactsWithSubTypes = artifactsWithSubTypes.concat(subTypeArtifactsWithMeta);
-        }
-      })
-      // update the original array (I know that mutation is bad, but it makes things easy here)
-      artifacts = artifactsWithSubTypes;
-    }
-  }
-
-  // 5. create 2d array from data to put into sheet
-  var artifactsAsCells = matchArtifactsToFields(
-    artifacts,
-    model.currentArtifact,
-    model.fields,
-    fieldTypeEnums,
-    model.projectUsers,
-    model.projectComponents,
-    model.projectReleases
-  );
-
-  // 6. add data to sheet
-  var spreadSheet = SpreadsheetApp.getActiveSpreadsheet(),
-    sheet = spreadSheet.getActiveSheet(),
-    range = sheet.getRange(2, 1, artifacts.length, model.fields.length);
-
-  range.setValues(artifactsAsCells);
-  return JSON.parse(JSON.stringify(artifactsAsCells));
-}
-
-// EXCEL SPECIFIC VARIATION OF THIS FUNCTION handles getting paginated artifacts from Spira and displaying them in the UI
+// EXCEL SPECIFIC FUNCTION - handles getting paginated artifacts from Spira and displaying them in the UI
 // @param: model: full model object from client
 // @param: enum of fieldTypeEnums used
 function getFromSpiraExcel(model, fieldTypeEnums) {
@@ -3445,7 +3356,22 @@ function getFromSpiraExcel(model, fieldTypeEnums) {
         if (sheet.name == requiredSheetName) {
           //first, clear the background colors of the spreadsheet (in case we had any errors in the last run)
           resetSheetColors(model, fieldTypeEnums, sheetRange);
+          console.log('model');
+          console.dir(model);
+          console.log('fieldTypeEnums');
+          console.dir(fieldTypeEnums);
           return getDataFromSpiraExcel(model, fieldTypeEnums).then((response) => {
+            //get Tsets que o usuário é dono -> get TCs que tem esses TS
+
+            //juntar tudo na response
+            //filtrar essa response para ter apenas TestCases/Steps que fazem parte do projeto atual
+
+            //IR DESMODELANDO AOS POUCOS
+
+
+
+            console.log('response');
+            console.dir(response);
             return processDataFromSpiraExcel(response, model, fieldTypeEnums)
           });
         } else {
@@ -3549,7 +3475,184 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
       artifacts = artifactsWithSubTypes;
     }
   }
-  return artifacts;
+
+  /*
+  5. if artifact has seconday type that needs to be retrieved separately, do so. Also,
+  check for secondary artifacts, then get their target artifacts - ie the actual artifact
+  that will be published in the spreadsheet (based on the secondary Ids)
+  */
+  if (model.currentArtifact.hasSecondaryType) {
+    console.log('sou secondary!');
+
+    //retrieve the secondary type
+    currentPage = 0;
+    getNextPage = true;
+    var secondaryArtifact = [];
+
+    async function getSecondaryPage(startRow) {
+      await getArtifacts(
+        model.user,
+        model.currentProject.id,
+        model.currentArtifact.SecondaryTypeId,
+        startRow,
+        GET_PAGINATION_SIZE,
+        null
+      ).then(function (response) {
+        // if we got a non empty array back then we have secondary Artifacts to process
+        if (response.body && response.body.length) {
+          secondaryArtifact = secondaryArtifact.concat(response.body);
+          // if we got less secondary Artifacts than the max we asked for, then we reached the end of the list in this request - and should stop
+          if (response.body && response.body.length < GET_PAGINATION_SIZE) {
+            getNextPage = false;
+            // if we got the full page size back then there may be more artifacts to get
+          } else {
+            currentPage++;
+          }
+          // if we got no artifacts back, stop now
+        } else {
+          getNextPage = false;
+        }
+      })
+    }
+
+    while (getNextPage && currentPage < 100) {
+      var startRow = (currentPage * GET_PAGINATION_SIZE) + 1;
+      await getSecondaryPage(startRow);
+    }
+
+
+    if (!secondaryArtifact.length) { secondaryArtifact = null; }
+    else {
+      if (model.currentArtifact.hasSecondaryTarget) {
+        //In this case, get the target artifacts based on the secondary
+        var targetIds = [];//lista de TestSetId
+
+        secondaryArtifact.forEach(function (item) {
+          //make sure we have only the secondary artifacts of this project
+          if (item.ProjectId == model.currentProject.id) {
+            targetIds.push(item[model.currentArtifact.SecondaryTypeField]);
+          }
+        });
+
+
+        /*
+        5.1 Now that we have the IDs of the secondary artifact, we need to get
+        the secondary target artifacts (ie the related artifacts)
+        */
+        //First, getting the destination IDs
+        currentPage = 0;
+        getNextPage = true;
+        var destIds = []; //associacoes
+
+        for (var i = 0; i < targetIds.length; i++) {
+
+          await getArtifacts(
+            model.user,
+            model.currentProject.id,
+            model.currentArtifact.SecondaryTypeId,
+            0,
+            GET_PAGINATION_SIZE,
+            targetIds[i]
+          ).then(function (response) {
+            // if we got a non empty array back then we have artifacts to process
+            if (response.body && response.body.length) {
+              destIds = destIds.concat(response.body);
+            }
+          })
+        }
+
+        //Finally, getting the target artifacts
+
+        currentPage = 0;
+        getNextPage = true;
+        var artifacts2 = [];
+
+        for (var j = 0; j < destIds.length; j++) {
+
+          await getArtifacts(
+            model.user,
+            model.currentProject.id,
+            model.currentArtifact.secondaryTargetId,
+            0,
+            GET_PAGINATION_SIZE,
+            destIds[j][model.currentArtifact.SecondaryTargetFieldName]
+          ).then(function (response) {
+            // add the response to the object as well as the association field
+            if (response.body && response.body.length) {
+              response.body[0][model.currentArtifact.associationField] = destIds[j][model.currentArtifact.associationField];
+              artifacts2 = artifacts2.concat(response.body);
+            }
+          })
+
+
+
+        }
+
+        // if there were no artifacts at all break out now
+        if (!artifacts2.length) artifacts2 = null;
+
+        // if artifact has subtype that needs to be retrieved separately, do so
+        if (model.currentArtifact.hasSubType) {
+          // find the id field
+          var idFieldNameArray = model.fields.filter(function (field) {
+            return field.type === fieldTypeEnums.id;
+          });
+
+          // if we have an id field, then we can find the id number for each artifact in the array
+          if (idFieldNameArray && idFieldNameArray[0].field) {
+            //function called below in the foreach call
+            async function getArtifactSubs(art) {
+              await getArtifacts(
+                model.user,
+                model.currentProject.id,
+                model.currentArtifact.subTypeId,
+                null,
+                null,
+                art[idFieldName]
+              ).then(function (response) {
+                // take action if we got any sub types back - ie if they exist for the specific artifact
+                if (response.body && response.body.length) {
+                  var subTypeArtifactsWithMeta = response.body.map(function (sub) {
+                    sub.isSubType = true;
+                    sub.parentId = art[idFieldName];
+                    return sub;
+                  });
+                  // now add the steps into the original object
+                  artifactsWithSubTypes = artifactsWithSubTypes.concat(subTypeArtifactsWithMeta);
+                }
+              })
+            };
+
+            var idFieldName = idFieldNameArray[0].field;
+            var artifactsWithSubTypes2 = [];
+
+            for (var i = 0; i < artifacts2.length; i++) {
+              artifactsWithSubTypes2.push(artifacts[i]);
+              await getArtifactSubs(artifacts[i]);
+            }
+            // update the original array
+            artifacts2 = artifactsWithSubTypes2;
+          }
+        }
+
+        //Finally, filter the objects to this project before returning 
+
+        artifacts.push(artifacts2);
+
+        // get rid of any dropdowns that don't have any values attached
+        artifacts = artifacts.filter(function (item) {
+          if (item.ProjectId == model.currentProject.id) {
+            return item;
+          }
+        });
+      }
+      else {
+        //if the secondary artifact is the one we want, add it to the list
+        artifacts = artifacts.concat(secondaryArtifact);
+      }
+    }
+    return artifacts;
+  }
 }
 
 // EXCEL SPECIFIC to process all the data retrieved from Spira and then display it

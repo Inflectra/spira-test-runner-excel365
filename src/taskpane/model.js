@@ -64,13 +64,17 @@ var params = {
     // enums and various metadata for all artifacts potentially used by the system
     artifacts: [
         // { field: 'requirements', name: 'Requirements', id: 1, hierarchical: true },
-        { field: 'testCases', name: 'Test Cases', id: 2, hasFolders: true, hasSubType: true, subTypeId: 7, subTypeName: "TestSteps" },
+        // { field: 'testCases', name: 'Test Cases', id: 2, hasFolders: true, hasSubType: true, subTypeId: 7, subTypeName: "TestSteps" },
         // { field: 'incidents', name: 'Incidents', id: 3 },
         // { field: 'releases', name: 'Releases', id: 4, hierarchical: true },
-         { field: 'testRuns', name: 'Test Runs', id: 5, disabled: true, hidden: true },
+        {
+            field: 'testRuns', name: 'Test Runs', id: 5, hasSubType: true, subTypeId: 7, subTypeName: "TestSteps", 
+            hasSecondaryType: true, SecondaryTypeId: 8, SecondaryTypeField: "TestSetId", hasSecondaryTarget: true, 
+            secondaryTargetId: 2, SecondaryTargetFieldName: "TestCaseId", associationField: "TestSetTestCaseId"
+        },
         // { field: 'tasks', name: 'Tasks', id: 6, hasFolders: true },
         //{ field: 'testSteps', name: 'Test Steps', id: 7, disabled: true, hidden: true, isSubType: true },
-        { field: 'testSets', name: 'Test Sets', id: 8, hasFolders: true },
+        //{ field: 'testSets', name: 'Test Sets', id: 8, hasFolders: true },
         // { field: 'risks', name: 'Risks', id: 14 }
     ],
     //special cases enum
@@ -82,118 +86,28 @@ var params = {
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system
 var templateFields = {
     testRuns: [
-        { field: "TestSetId", name: "ID", type: params.fieldType.id },
-        { field: "Name", name: "Name", type: params.fieldType.text, required: true },
-        { field: "Description", name: "Description", type: params.fieldType.text},
-        { field: "ReleaseId", name: "Scheduled Release", type: params.fieldType.release },
-        {
-            field: "TestRunTypeId", name: "Run Type", type: params.fieldType.drop, required: true,
-            values: [
-                { id: 1, name: "Manual" },
-                { id: 2, name: "Automated" }
-            ]
-        },
-        {
-            field: "TestSetStatusId", name: "Status", type: params.fieldType.drop, required: true,
-            values: [
-                { id: 1, name: "Not Started" },
-                { id: 2, name: "In Progress" },
-                { id: 3, name: "Completed" },
-                { id: 4, name: "Blocked" },
-                { id: 5, name: "Deferred" }
-            ]
-        },
-        {
-            field: "RecurrenceId", name: "Recurrence", type: params.fieldType.drop,
-            values: [
-                { id: 0, name: "One Time" },
-                { id: 1, name: "Hourly" },
-                { id: 2, name: "Daily" },
-                { id: 3, name: "Weekly" },
-                { id: 4, name: "Monthly" },
-                { id: 5, name: "Quarterly" },
-                { id: 6, name: "Yearly" }
-            ]
-        },
-        { field: "CreatorId", name: "Creator", type: params.fieldType.user },
-        { field: "OwnerId", name: "Owner", type: params.fieldType.user },
-        {
-            field: "TestSetFolderId", name: "Folder", type: params.fieldType.drop, values: [],
-            bespoke: {
-                url: "/test-set-folders",
-                idField: "TestSetFolderId",
-                nameField: "Name",
-                indent: "IndentLevel",
-                isProjectBased: true
-            }
-        },
-        { field: "CreationDate", name: "Creation Date", type: params.fieldType.date, isReadOnly: true, isHidden: true },
-        { field: "PlannedDate", name: "Planned Date", type: params.fieldType.date },
-        { field: "Text", name: "New Comment", type: params.fieldType.text, isComment: true, isAdvanced: true },
-        { field: "ExecutionDate", name: "Execution Date", type: params.fieldType.date, isReadOnly: true, isHidden: true },
-        { field: "ProjectId", name: "ProjectId", type: params.fieldType.int, isReadOnly: true, isHidden: true },
-        { field: "ConcurrencyDate", name: "Concurrency Date", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-    ],
-
-    testCases: [
         { field: "TestCaseId", name: "Case ID", type: params.fieldType.id },
         { field: "TestStepId", name: "Step ID", type: params.fieldType.subId, isSubTypeField: true },
-        { field: "Name", name: "Test Case Name", type: params.fieldType.text, required: true, blocksSubType: true },
-        { field: "Description", name: "Test Case Description", type: params.fieldType.text, blocksSubType: true },
-        { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, requiredForSubType: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC" },
-        { field: "Position", name: "Position", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true },
+        { field: "Name", name: "Test Case Name", type: params.fieldType.text },
+        { field: "Release", name: "New Associated Release(s)", type: params.fieldType.text },
+        { field: "TestSetId", name: "Set ID", type: params.fieldType.id },
+        { field: "TestSetTestCaseId", name: "Set Case Unique ID", type: params.fieldType.id },
+        { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC" },
         { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true, requiredForSubType: true },
         { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true },
         {
-            field: "TestCasePriorityId", name: "Test Case Priority", type: params.fieldType.drop,
-            bespoke: {
-                url: "/test-cases/priorities",
-                idField: "PriorityId",
-                nameField: "Name",
-                isActive: "Active"
-            }
+            field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.drop, isSubTypeField: true, isRunField: true,
+            values: [
+                { id: 1, name: "Failed" },
+                { id: 2, name: "Passed" },
+                { id: 3, name: "Not Run" },
+                { id: 4, name: "Not Applicable" },
+                { id: 5, name: "Blocked" },
+                { id: 6, name: "Caution" }
+            ]
         },
-        {
-            field: "TestCaseTypeId", name: "Test Case Type", type: params.fieldType.drop, required: true,
-            bespoke: {
-                url: "/test-cases/types",
-                idField: "TestCaseTypeId",
-                nameField: "Name",
-                isActive: "IsActive"
-            }
-        },
-        {
-            field: "TestCaseStatusId", name: "Test Case Status", type: params.fieldType.drop, required: true,
-            bespoke: {
-                url: "/test-cases/statuses",
-                idField: "TestCaseStatusId",
-                nameField: "Name",
-                isActive: "Active"
-            }
-        },
-        { field: "AuthorId", name: "Author", type: params.fieldType.user },
-        { field: "OwnerId", name: "Test Case Owner", type: params.fieldType.user },
-        { field: "ProjectId", name: "ProjectId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-        {
-            field: "TestCaseFolderId", name: "Test Case Folder", type: params.fieldType.drop, values: [],
-            bespoke: {
-                url: "/test-folders",
-                idField: "TestCaseFolderId",
-                nameField: "Name",
-                indent: "IndentLevel",
-                isProjectBased: true
-            }
-        },
-        { field: "Requirement", name: "New Associated Requirement(s)", type: params.fieldType.text, isAdvanced: true, association: params.associationEnums.tc2req },
-        { field: "Release", name: "New Associated Release(s)", type: params.fieldType.text, isAdvanced: true, association: params.associationEnums.tc2rel },
-        { field: "TestSet", name: "New Associated Test Set(s)", type: params.fieldType.text, isAdvanced: true, association: params.associationEnums.tc2ts },
-        { field: "ComponentIds", name: "Test Case Component", type: params.fieldType.component, isMulti: true },
-        { field: "CreationDate", name: "Test Case Creation Date", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-        { field: "Text", name: "New Comment", type: params.fieldType.text, isComment: true, isAdvanced: true },
-        { field: "ConcurrencyDate", name: "Test Case Conc. Date", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-        { field: "ConcurrencyDate", name: "Test Step Conc. Date", type: params.fieldType.text, isReadOnly: true, isSubTypeField: true, isHidden: true },
-        { field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-        { field: "IsSuspect", name: "IsSuspect", type: params.fieldType.bool, isReadOnly: true, isHidden: true }
+        { field: "Actual Result", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, isRunField: true },
+        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, isRunField: true }
     ],
 
     // risks: [
@@ -286,6 +200,7 @@ function Data() {
         bgHeader: '#f1a42b',
         bgHeaderSubType: '#fdcb26',
         bgReadOnly: '#eeeeee',
+        bgRunField: '#c0fcd6',
         header: '#ffffff',
         headerRequired: '#000000',
         warning: '#ffcccc'

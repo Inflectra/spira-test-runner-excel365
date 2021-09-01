@@ -1227,8 +1227,7 @@ function templateLoader() {
   model.projectReleases = uiSelection.projectReleases;
   model.projectUsers = uiSelection.projectUsers;
   // get variables ready
-  var customs = uiSelection.artifactCustomFields,
-    fields = templateFields[model.currentArtifact.field],
+  var fields = templateFields[model.currentArtifact.field],
     hasBespoke = fieldsWithBespokeData(fields);
 
   // add bespoke data to relevant fields 
@@ -1245,8 +1244,7 @@ function templateLoader() {
     });
   }
 
-  // collate standard fields and custom fields
-  model.fields = fields.concat(customs);
+  model.fields = fields;
 
   // get rid of any dropdowns that don't have any values attached
   model.fields = model.fields.filter(function (field) {
