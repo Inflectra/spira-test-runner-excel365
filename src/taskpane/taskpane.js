@@ -312,7 +312,7 @@ function setDropdown(selectId, array, firstMessage) {
 function isModelDifferentToSelection() {
   if (model.isTemplateLoaded) {
     var projectHasChanged = model.currentProject.id !== getSelectedProject().id;
-    var artifactHasChanged = model.currentArtifact.id !== getSelectedArtifact().id;
+    var artifactHasChanged = model.currentArtifact.id !== params.artifacts[0].id;
     return projectHasChanged || artifactHasChanged;
   } else {
     return false;
@@ -366,6 +366,7 @@ function setAdvancedMode() {
 // handle the click of the login button
 function loginAttempt() {
   if (!devMode) getAuthDetails();
+  document.getElementById('panel-decide').classList.add('offscreen');
   login();
 }
 
@@ -412,7 +413,7 @@ function populateProjects(projects) {
   document.getElementById("js--loggedInAs-main").innerHTML = "Logged in as: " + model.user.userName;
 
   // get UI logic ready for decision panel
-  showPanel("decide");
+  showMainPanel('run');
   hideLoadingSpinner();
 }
 
@@ -456,6 +457,8 @@ function showMainPanel(type) {
   // opens the panel
   showPanel("main");
   hideLoadingSpinner();
+  //
+  document.getElementById('main-guide-1-fromSpira').style.fontWeight = 'bold';
 }
 
 
@@ -504,8 +507,6 @@ function changeProjectSelect(e) {
     document.getElementById("btn-template").disabled = true;
     uiSelection.currentProject = null;
   } else {
-    // enable artifacts dropdown
-    document.getElementById("select-artifact").disabled = false;
 
     // get the project object and update project information if project has changed
     var chosenProject = getSelectedProject();
@@ -513,21 +514,27 @@ function changeProjectSelect(e) {
       //set the temp data store project to the one selected;
       uiSelection.currentProject = chosenProject;
 
-      // enable template button only when all info is received - otherwise keep it disabled
-      manageTemplateBtnState();
-
       // kick off API calls
       getProjectSpecificInformation(model.user, uiSelection.currentProject.id);
 
       // for 6.1 the v6 API for get projects does not get the project template IDs so have to do this
       getTemplateFromProjectId(model.user, uiSelection.currentProject.id, uiSelection.currentArtifact);
 
-      // get new data for artifact and this project, if artifact has been selected
-      // USE THIS CODE WHEN bug in 6.1 is fixed
-      // if (uiSelection.currentArtifact) {
-      //getArtifactSpecificInformation(model.user, uiSelection.currentProject.templateId, uiSelection.currentProject.id, uiSelection.currentArtifact)
-      // }
+      // since we already have our artifact selected (test runs), proceed the operations:
+
+      //For Test Runs, this is the only "artifact type" available, so force its selection
+      uiSelection.currentArtifact = params.artifacts[0];
+      //keep the artifacts window disabled
+      document.getElementById("select-artifact").disabled = true;
+      // enable template button only when all info is received - otherwise keep it disabled
+      manageTemplateBtnState();
+      // kick off API calls - if we have a current template and project
+      if (uiSelection.currentProject.templateId && uiSelection.currentProject.id) {
+        getArtifactSpecificInformation(model.user, uiSelection.currentProject.templateId, uiSelection.currentProject.id, uiSelection.currentArtifact);
+      }
     }
+    document.getElementById('main-guide-2').style.fontWeight = 'bold';
+    document.getElementById('main-guide-1-fromSpira').style.fontWeight = 'normal';
   }
 }
 
@@ -758,6 +765,16 @@ function getFromSpiraComplete(log) {
       msOffice.operationComplete(log.status);
     }
   }
+
+  document.getElementById('main-guide-2').style.fontWeight = 'normal';
+  document.getElementById('main-guide-3').style.fontWeight = 'bold';
+
+  document.getElementById('btn-fromSpira').classList.remove('ms-Button--primary');
+  document.getElementById('btn-fromSpira').classList.add('ms-Button--default');
+
+  document.getElementById('btn-updateToSpira').classList.add('ms-Button--primary');
+  document.getElementById('btn-updateToSpira').classList.remove('ms-Button--default');
+
 }
 
 
@@ -774,9 +791,9 @@ function sendToSpiraAttempt() {
       google.script.run
         .withFailureHandler(errorImpExp)
         .withSuccessHandler(sendToSpiraComplete)
-        .sendToSpira(model, params.fieldType, false);
+        .sendToSpira(model, params.fieldType);
     } else {
-      msOffice.sendToSpira(model, params.fieldType, false)
+      msOffice.sendToSpira(model, params.fieldType)
         .then((response) => sendToSpiraComplete(response))
         .catch((error) => errorImpExp(error));
     }
@@ -801,7 +818,7 @@ function updateSpiraAttempt() {
         .withSuccessHandler(sendToSpiraComplete)
         .sendToSpira(model, params.fieldType, true);
     } else {
-      msOffice.sendToSpira(model, params.fieldType, true)
+      msOffice.sendToSpira(model, params.fieldType)
         .then((response) => sendToSpiraComplete(response))
         .catch((error) => errorImpExp(error));
     }

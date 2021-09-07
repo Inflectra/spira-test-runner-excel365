@@ -68,9 +68,9 @@ var params = {
         // { field: 'incidents', name: 'Incidents', id: 3 },
         // { field: 'releases', name: 'Releases', id: 4, hierarchical: true },
         {
-            field: 'testRuns', name: 'Test Runs', id: 5, hasSubType: true, subTypeId: 7, subTypeName: "TestSteps", 
-            hasSecondaryType: true, SecondaryTypeId: 8, SecondaryTypeField: "TestSetId", hasSecondaryTarget: true, 
-            secondaryTargetId: 2, SecondaryTargetFieldName: "TestCaseId", associationField: "TestSetTestCaseId"
+            field: 'testRuns', name: 'Test Runs', id: 5, conditionField: "IsTestSteps", hasSubType: true, subTypeId: 7, subTypeName: "TestSteps", 
+            hasSecondaryType: true, SecondaryTypeId: 8, SecondaryTypeField: "TestSetId", secondaryConditionField: "TestRunTypeId", secondaryConditionValue: 1,
+            hasSecondaryTarget: true, secondaryTargetId: 2, SecondaryTargetFieldName: "TestCaseId", associationField: "TestSetTestCaseId"
         },
         // { field: 'tasks', name: 'Tasks', id: 6, hasFolders: true },
         //{ field: 'testSteps', name: 'Test Steps', id: 7, disabled: true, hidden: true, isSubType: true },
@@ -89,14 +89,14 @@ var templateFields = {
         { field: "TestCaseId", name: "Case ID", type: params.fieldType.id },
         { field: "TestStepId", name: "Step ID", type: params.fieldType.subId, isSubTypeField: true },
         { field: "Name", name: "Test Case Name", type: params.fieldType.text },
-        { field: "Release", name: "New Associated Release(s)", type: params.fieldType.text },
+        { field: "Release", name: "Associated Release(s)", type: params.fieldType.text },
         { field: "TestSetId", name: "Set ID", type: params.fieldType.id },
         { field: "TestSetTestCaseId", name: "Set Case Unique ID", type: params.fieldType.id },
         { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC" },
         { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true, requiredForSubType: true },
         { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true },
         {
-            field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.drop, isSubTypeField: true, isRunField: true,
+            field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.drop, isSubTypeField: true, sendField: true,
             values: [
                 { id: 1, name: "Failed" },
                 { id: 2, name: "Passed" },
@@ -106,8 +106,8 @@ var templateFields = {
                 { id: 6, name: "Caution" }
             ]
         },
-        { field: "Actual Result", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, isRunField: true },
-        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, isRunField: true }
+        { field: "Actual Result", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true },
+        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, sendField: true }
     ],
 
     // risks: [
