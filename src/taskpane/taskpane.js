@@ -135,7 +135,7 @@ function setEventListeners() {
 
   document.getElementById("lnk-help-decide").onclick = function () {
     panelToggle('help');
-    showChosenHelpSection('modes')
+    showChosenHelpSection('getting')
   };
   document.getElementById("btn-decide-send").onclick = function () { showMainPanel("send") };
   document.getElementById("btn-decide-get").onclick = function () { showMainPanel("get") };
@@ -159,8 +159,8 @@ function setEventListeners() {
 
   document.getElementById("btn-help-back").onclick = function () { panelToggle("help") };
   document.getElementById("btn-help-section-login").onclick = function () { showChosenHelpSection('login') };
-  document.getElementById("btn-help-section-modes").onclick = function () { showChosenHelpSection('modes') };
-  document.getElementById("btn-help-section-data").onclick = function () { showChosenHelpSection('data') };
+  document.getElementById("btn-help-section-getting").onclick = function () { showChosenHelpSection('getting') };
+  document.getElementById("btn-help-section-sending").onclick = function () { showChosenHelpSection('sending') };
 }
 
 
@@ -507,13 +507,13 @@ function changeProjectSelect(e) {
     document.getElementById("btn-template").disabled = true;
     uiSelection.currentProject = null;
   } else {
-
     // get the project object and update project information if project has changed
     var chosenProject = getSelectedProject();
     if (chosenProject.id && chosenProject.id !== uiSelection.currentProject.id) {
       //set the temp data store project to the one selected;
       uiSelection.currentProject = chosenProject;
 
+      //manageTemplateBtnState();
       // kick off API calls
       getProjectSpecificInformation(model.user, uiSelection.currentProject.id);
 
@@ -521,20 +521,24 @@ function changeProjectSelect(e) {
       getTemplateFromProjectId(model.user, uiSelection.currentProject.id, uiSelection.currentArtifact);
 
       // since we already have our artifact selected (test runs), proceed the operations:
+      // get the artifact object and update artifact information if artifact has changed
+      var chosenArtifact = params.artifacts[0];
 
-      //For Test Runs, this is the only "artifact type" available, so force its selection
-      uiSelection.currentArtifact = params.artifacts[0];
-      //keep the artifacts window disabled
-      document.getElementById("select-artifact").disabled = true;
+      //set the temp date store artifact to the one selected;
+      uiSelection.currentArtifact = chosenArtifact;
+
       // enable template button only when all info is received - otherwise keep it disabled
       manageTemplateBtnState();
+
       // kick off API calls - if we have a current template and project
       if (uiSelection.currentProject.templateId && uiSelection.currentProject.id) {
         getArtifactSpecificInformation(model.user, uiSelection.currentProject.templateId, uiSelection.currentProject.id, uiSelection.currentArtifact);
       }
+
+
+      document.getElementById('main-guide-2').style.fontWeight = 'bold';
+      document.getElementById('main-guide-1-fromSpira').style.fontWeight = 'normal';
     }
-    document.getElementById('main-guide-2').style.fontWeight = 'bold';
-    document.getElementById('main-guide-1-fromSpira').style.fontWeight = 'normal';
   }
 }
 
@@ -632,16 +636,15 @@ function manageTemplateBtnState() {
 
   // only try to enable the button when both a project and artifact have been chosen
   if (uiSelection.currentProject && uiSelection.currentArtifact) {
+
     // set a function to run repeatedly until all gets are done
     // then enable the button, and stop the timer loop
     var checkGetsSuccess = setInterval(updateButtonStatus, 500);
-
     // and show a message while api calls are underway
     document.getElementById("message-fetching-data").style.visibility = "visible";
 
     function updateButtonStatus() {
       if (allGetsSucceeded()) {
-
         if (!document.getElementById("btn-updateToSpira").disabled) {
           //sets the UI to allow update
           document.getElementById("btn-fromSpira").disabled = false;
@@ -879,14 +882,14 @@ function showChosenHelpSection(choice) {
   // does not use a dynamic list using queryselectorall and node list because Excel does not support this
   // hide all sections and then only show the one the user wants
   document.getElementById("help-section-login").classList.add("hidden");
-  document.getElementById("help-section-modes").classList.add("hidden");
-  document.getElementById("help-section-data").classList.add("hidden");
+  document.getElementById("help-section-getting").classList.add("hidden");
+  document.getElementById("help-section-sending").classList.add("hidden");
   document.getElementById("help-section-" + choice).classList.remove("hidden");
 
   // set all buttons back to normal, then highlight one just clicked
   document.getElementById("btn-help-section-login").classList.remove("create");
-  document.getElementById("btn-help-section-modes").classList.remove("create");
-  document.getElementById("btn-help-section-data").classList.remove("create");
+  document.getElementById("btn-help-section-getting").classList.remove("create");
+  document.getElementById("btn-help-section-sending").classList.remove("create");
   document.getElementById("btn-help-section-" + choice).classList.add("create");
 }
 
@@ -1226,7 +1229,8 @@ function getUsersSuccess(data) {
 // returns boolean
 function allGetsSucceeded() {
   var projectGetsDone = model.projectGetRequestsToMake === model.projectGetRequestsMade,
-    artifactGetsDone = model.artifactGetRequestsToMake === model.artifactGetRequestsMade;
+    //this application uses a 'special' single artifact, so this will always be true
+    artifactGetsDone = true;
   return projectGetsDone && artifactGetsDone;
 }
 

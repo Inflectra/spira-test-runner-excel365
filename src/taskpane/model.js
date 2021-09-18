@@ -96,7 +96,7 @@ var templateFields = {
         { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true, requiredForSubType: true },
         { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true },
         {
-            field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.drop, isSubTypeField: true, sendField: true,
+            field: "ExecutionStatusId", name: "Execution Status", type: params.fieldType.drop, isSubTypeField: true, sendField: true,
             values: [
                 { id: 1, name: "Failed" },
                 { id: 2, name: "Passed" },

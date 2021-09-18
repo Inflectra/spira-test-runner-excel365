@@ -243,7 +243,7 @@
 
         <h3>Quick Help Guide</h3>
         <p class="mt-0">For more information see our <a target="_blank"
-                href="http://spiradoc.inflectra.com/Migration-and-Integration/Importing-from-Microsoft-Excel-(Office365)/">documentation. This is version </a>.
+                href="http://spiradoc.inflectra.com/Migration-and-Integration/Importing-from-Microsoft-Excel-(Office365)/">documentation.</a>
         </p>
 
         <div class="flex" id='help-header'>
@@ -251,13 +251,13 @@
                 title="Help with the login screen" type="button">
                 Login
             </button>
-            <button class="btn-help ms-Button ms-Button--default" id="btn-help-section-modes"
-                title="Which mode of the tool is right for you" type="button">
-                Modes
+            <button class="btn-help ms-Button ms-Button--default" id="btn-help-section-getting"
+                title="Get Test Cases and Test Sets + Test Steps assigned to you from Spira" type="button">
+                Get
             </button>
-            <button class="btn-help ms-Button ms-Button--default" id="btn-help-section-data"
-                title="Help with working with import and export modes for different artifacts" type="button">
-                Data
+            <button class="btn-help ms-Button ms-Button--default" id="btn-help-section-sending"
+                title="Send the spreadsheet data back to Spira" type="button">
+                Send
             </button>
         </div>
 
@@ -291,197 +291,76 @@
 
 
 
-        <div id="help-section-modes" class="help-section hidden">
-            <h4>2. Choose which mode to use</h4>
-            <p>This add-in has two separate modes: exporting; and importing.</p>
-            <p>Once you have successfully logged in to your Spira application, you need to decide what you want to use
-                this add-in for. You can go back and change your mind at any time.</p>
+        <div id="help-section-getting" class="help-section hidden">
+            <h4>2. Getting data from Spira</h4>
+            <p>You can use this add-in to execute test cases while disconnected from your network and then upload the results to SpiraTeam as a single batch.</p>
+            <p>First, you'll need to get the Test Cases/Test Sets assigned to you from Spira. After providing your credentials, please select a product to retrieve the data from, then 
+                click on 'Get from Spira'. You should see the Test Cases and their Test Steps on the Spreadsheet. The spreadsheet template has a few different columns:</p>
             <ul class="list">
                 <li>
                     <p>
-                        <b>Get data from Spira (exporting)</b>
-                        <small>This button will prompt you to pick a product and artifact to LOAD FROM Spira loaded into
-                            the spreadsheet (on the current active sheet). Exporting data in this way can be helpful to
-                            share with colleagues who are not using Spira. Please note that this will bring over 100% of
-                            the artifacts in that product so it may take some time.</small>
-                    </p>
-                    <p><small>Optionally, after getting data from Spira, you can make changes, then <b>update the data in Spira</b>, hitting the button 'Update Spira'. Please note that this option only allows you to update the received data, not create new artifacts.</small>
+                        <b>Case ID and Step ID: </b>
+                        <small>Respectively, the IDs of the Test Case and the Test Step in Spira. You can't edit this field.</small>
                     </p>
                 </li>
                 <li>
                     <p>
-                        <b>Send data to Spira (importing)</b>
-                        <small>This will button will prompt you to pick a product and artifact to SEND TO Spira from the
-                            current active sheet. Before you can enter data to send, the add-in creates a dynamic
-                            template for that specific product and artifact to make it easier to enter data
-                            correctly.</small>
+                        <b>Test Case Name: </b>
+                        <small>The name of the Test Case in Spira.</small>
                     </p>
                 </li>
                 <li>
                     <p>
-                        <b>Logout</b>
-                        <small>Close your connection with Spira and take you back to the add-in's login page</small>
+                        <b>Associated Release: </b>
+                        <small>The release associated with the Test Case in Spira.</small>
                     </p>
                 </li>
                 <li>
                     <p>
-                        <b>Advanced Mode (optional)</b>
-                        <small>This mode allows you to create new comments and associate artifacts.</small>
-                        <p><small>To <b>associate artifacts</b>, find the column of the artifact type you want to associate to (e.g.: "New Associated Requirement") and enter the ID(s) of the artifact(s) to associate to. You can associate multiple artifacts at a time using a comma-separated list of IDs, e.g.: 335,336,337. It's possible to associate: </small></p>
-                        <ul>
-                            <small><li>Requirements to Requirements</li></small>
-                            <small><li>TestCases to Requirements</li></small>
-                            <small><li>TestCases to Releases</li></small>
-                            <small><li>TestCases to TestSets</li></small>
-                        </ul>
-                        <p><small>To <b>create a new comment</b>, simply enter the text under the column "New Comment". When you send to / update Spira, this text will 
-                            be saved as a new comment in the artifact.</small></p>
+                        <b>Set ID: </b>
+                        <small>If the Test Case came from a Test Step assigned to you, you should see its ID in this field. Otherwise, it will remain blank.</small>                        
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Set Case Unique ID: </b>
+                        <small>This is the Test-Set, Test Case unique ID i.e.: the ID of the Test Case inside a Test Set in Spira.</small>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Test Step Description/Test Step Expected Result/Test Step Sample Data: </b>
+                        <small>This field brings the text description/expected result/sample data of the Test Step in Spira.</small>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Execution Status: </b>
+                        <small>The execution status of that test step. It should be selected drop the dropdown list. This field will be sent to Spira. </small>
+                    </p>
+                </li>
+
+                <li>
+                    <p>
+                        <b>Actual Result: </b>
+                        <small>The long description of the actual result experienced during testing. If you want it formatted, you need to add HTML tags such as &lt;b&gt; for bold. This field will be sent to Spira.</small>
+                    </p>
+                </li>
+
+                <li>
+                    <p>
+                        <b>Incident Name: </b>
+                        <small>If you want to log an incident associated with the test failure, enter the name of the incident here. The description of the incident will be pre-populated with the Test Step Description, Expected Result, and Actual Result.</small>
                     </p>
                 </li>
             </ul>
         </div>
 
+        <div id="help-section-sending" class="help-section hidden">
+            <h4>3. Send the data back to Spira</h4>
 
-
-
-        <div id="help-section-data" class="help-section hidden">
-            <h4>3. Prepare for the data transfer</h4>
-
-            <p>If you are getting data from or sending data to Spira you first have to select the product and artifact
-                to use from the dropdown menus.</p>
-            <ul class="list">
-                <li>
-                    <p>
-                        <b>Products</b>: <small> lists all products in Spira that you are a member of.</small>
-                    </p>
-                </li>
-                <li>
-                    <p>
-                        <b>Artifacts</b>: <small>this menu does not dynamically change based on your permissions, so if
-                            you cannot add data to an artifact this could be why.</small>
-                    </p>
-                </li>
-            </ul>
-
-            <p><b>Getting data from Spira</b>: once you have your product and artifact selected, click the button to
-                start the export process. The add-in gets every entry of that artifact in the chosen product so it may
-                take some time.</p>
-
-            <p><b>Sending data to Spira</b>: before you can enter data into the sheet click "Prepare Sheet" to create a
-                    template for that product and artifact. Once the sheet is ready click the Send button to add that data
-                    to Spira.</p>
-
-            <p><b>Updating data in Spira (advanced):</b> once you have the data from Spira in the spreadsheet, you can
-                update the available fields and then click on 'Update Spira' to make the changes reflect in Spira. Each row will be sent in full to Spira - if you blank out a cell, that value will be blanked out in Spira. NOTE: you cannot move artifacts by updating (for example, you cannot move requirements in the hierarchy, or test steps within or between test cases)</p>
-
-            <h4>Fields: working with required fields</h4>
-            <ul class="list">
-                <li>
-                    <p>
-                        <small>Required fields are marked by their name in the title row shown as bold black text
-                            (standard fields are regular light text)</small>
-                    </p>
-                </li>
-                <li>
-                    <p>
-                        <small><b>For test steps</b>, required fields are shown in black, but not bold text.</small>
-                    </p>
-                </li>
-            </ul>
-
-            <h4>Fields: how certain 'special' fields work</h4>
-            <ul class="list">
-                <li>
-                    <p>
-                        <b>ID Fields</b>
-                        <small>This field MUST be left blank to add new items to Spira. Any rows with entries in the ID
-                            fields are skipped over.</small>
-                    </p>
-                </li>
-                <li>
-                    <p>
-                        <b>Test Cases and Test Steps</b>
-                        <small>
-                            Test case fields are columns with a darker background color. Test steps fields are columns
-                            with a lighter background color.
-                            </br>
-                            To create a test case with a step, fill in the test case fields in the first row. Then fill
-                            in the test step fields for the second row. Add more steps as needed in new rows. To add a
-                            second test case, start a new row and fill in the test case fields again.
-                            </br>
-                            Make sure: each row only fills in either test case or test step columns. If the system
-                            cannot tell whether an entry is a test case or step it is skipped over when sending to
-                            Spira.
-                        </small>
-                    </p>
-                </li>
-                <li>
-                    <p>
-                        <b>Name</b>
-                        <small>For REQUIREMENTS and RELEASES this field supports indentation, add a “ > “ symbol to
-                            indicate how the items in the artifact hierarchy are organized.</small>
-                    </p>
-                    <pre>
-Example:
-Item 1
-> Item 2 child of item 1
-> Item 3 child of item 1
-> > Item 4 child of item 3
-                    </pre>
-                </li>
-            </ul>
-
-            <h4>Fields: dates</h4>
-            <ul class="list">
-                <li>
-                    <p>
-                        <small>Dates are entered into SpiraPlan as UTC and at midday.</small>
-                    </p>
-                </li>
-            </ul>
-
-            <h4>Fields: multi-select lists</h4>
-            <ul class="list">
-                <li>
-                    <p>
-                        <small>Some fields in SpiraPlan let you select multiple items from a list. Spreadsheets do not
-                            allow this functionality</small>
-                    </p>
-                </li>
-                <li>
-                    <p>
-                        <small>When data is sent from SpiraPlan to the spreadsheet, only the first value in the list (if
-                            multiple are selected) will be displayed</small>
-                    </p>
-                </li>
-                <li>
-                    <p>
-                        <small>When sending data to SpiraPlan you will only be able to select one value</small>
-                    </p>
-                </li>
-            </ul>
-
-            <p><b>Other actions you can do on this page</b></p>
-            <ul class="list">
-                <li>
-                    <p>
-                        <b>Back</b>
-                        <small>Go back to select which add-in mode to run</small>
-                    </p>
-                </li>
-                <li>
-                    <p>
-                        <b>Help</b>
-                        <small>Open the add-ins help menu to this page.</small>
-                    </p>
-                </li>
-                <li>
-                    <p>
-                        <b>Logout</b>
-                        <small>Close your connection with Spira and take you back to the add-in's login page</small>
-                    </p>
-                </li>
-            </ul>
+            <p>Once you have finished testing and populating the green fields of the spreadsheet, make sure you are connected on the network, then 
+                click on the 'Send to Spira' button to have the Add-In connect with SpiraTeam and upload the results to the server.</p>
         </div>
     </div>
 
