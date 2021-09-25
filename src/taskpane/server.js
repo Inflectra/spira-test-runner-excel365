@@ -1761,49 +1761,49 @@ function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact,
       break;
     } else {
 
-        var rowChecks = {
-          hasSubType: artifact.hasSubType,
-          totalFieldsRequired: countRequiredFieldsByType(fields, false),
-          totalSubTypeFieldsRequired: artifact.hasSubType ? countRequiredFieldsByType(fields, true) : 0,
-          countRequiredFields: rowCountRequiredFieldsByType(sheetData[rowToPrep], fields, false),
-          countSubTypeRequiredFields: artifact.hasSubType ? rowCountRequiredFieldsByType(sheetData[rowToPrep], fields, true) : 0,
-          subTypeIsBlocked: !artifact.hasSubType ? true : rowBlocksSubType(sheetData[rowToPrep], fields),
-          spiraId: rowIdFieldInt(sheetData[rowToPrep], fields, fieldTypeEnums)
-        },
-          // create entry used to populate all relevant data for this row
+      var rowChecks = {
+        hasSubType: artifact.hasSubType,
+        totalFieldsRequired: countRequiredFieldsByType(fields, false),
+        totalSubTypeFieldsRequired: artifact.hasSubType ? countRequiredFieldsByType(fields, true) : 0,
+        countRequiredFields: rowCountRequiredFieldsByType(sheetData[rowToPrep], fields, false),
+        countSubTypeRequiredFields: artifact.hasSubType ? rowCountRequiredFieldsByType(sheetData[rowToPrep], fields, true) : 0,
+        subTypeIsBlocked: !artifact.hasSubType ? true : rowBlocksSubType(sheetData[rowToPrep], fields),
+        spiraId: rowIdFieldInt(sheetData[rowToPrep], fields, fieldTypeEnums)
+      },
+        // create entry used to populate all relevant data for this row
+        entry = {};
+
+      // first check for errors
+      var hasProblems = rowHasProblems(rowChecks, isUpdate);
+      if (hasProblems) {
+        entry.validationMessage = hasProblems;
+        // if error free determine what field filtering is required - needed to choose type/subtype fields if subtype is present
+      } else {
+        var fieldsToFilter = relevantFields(rowChecks);
+        entry = createEntryFromRow(sheetData[rowToPrep], model, fieldTypeEnums, artifactIsHierarchical, lastIndentPosition, fieldsToFilter, isUpdate, isComment);
+        // FOR SUBTYPE ENTRIES add flag on entry if it is a subtype
+        if (entry && fieldsToFilter === FIELD_MANAGEMENT_ENUMS.subType) {
+          entry.isSubType = true;
+        }
+        // FOR HIERARCHICAL ARTIFACTS update the last indent position before going to the next entry to make sure relative indent is set correctly
+        if (entry && artifactIsHierarchical) {
+          lastIndentPosition = entry.indentPosition;
+        }
+      }
+      //treating special Test Case update issues
+
+      if (artifact.id == params.artifactEnums.testCases && entry.isSubType) {
+        //if this is a testStep, check if the parent is valid
+        var validParent = isValidParent(entriesForExport);
+        if (!validParent) {
+          //if the parent is not valid, mark that as an error
           entry = {};
-
-        // first check for errors
-        var hasProblems = rowHasProblems(rowChecks, isUpdate);
-        if (hasProblems) {
-          entry.validationMessage = hasProblems;
-          // if error free determine what field filtering is required - needed to choose type/subtype fields if subtype is present
-        } else {
-          var fieldsToFilter = relevantFields(rowChecks);
-          entry = createEntryFromRow(sheetData[rowToPrep], model, fieldTypeEnums, artifactIsHierarchical, lastIndentPosition, fieldsToFilter, isUpdate, isComment);
-          // FOR SUBTYPE ENTRIES add flag on entry if it is a subtype
-          if (entry && fieldsToFilter === FIELD_MANAGEMENT_ENUMS.subType) {
-            entry.isSubType = true;
-          }
-          // FOR HIERARCHICAL ARTIFACTS update the last indent position before going to the next entry to make sure relative indent is set correctly
-          if (entry && artifactIsHierarchical) {
-            lastIndentPosition = entry.indentPosition;
-          }
+          entry.validationMessage = 'Invalid TestCase parent. Please check your data.';
         }
-        //treating special Test Case update issues
+      }
 
-        if (artifact.id == params.artifactEnums.testCases && entry.isSubType) {
-          //if this is a testStep, check if the parent is valid
-          var validParent = isValidParent(entriesForExport);
-          if (!validParent) {
-            //if the parent is not valid, mark that as an error
-            entry = {};
-            entry.validationMessage = 'Invalid TestCase parent. Please check your data.';
-          }
-        }
+      if (entry) { entriesForExport.push(entry); }
 
-        if (entry) { entriesForExport.push(entry); }
-      
     }
   }
   return entriesForExport;
@@ -3312,13 +3312,8 @@ function getFromSpiraExcel(model, fieldTypeEnums) {
           //first, clear the background colors of the spreadsheet (in case we had any errors in the last run)
           resetSheetColors(model, fieldTypeEnums, sheetRange);
           return getDataFromSpiraExcel(model, fieldTypeEnums).then((response) => {
-            //get Tsets que o usuário é dono -> get TCs que tem esses TS
-
-            //juntar tudo na response
-            //filtrar essa response para ter apenas TestCases/Steps que fazem parte do projeto atual
-
-            //IR DESMODELANDO AOS POUCOS
-
+            console.log('response');
+            console.dir(response);
             //error handling
             if (response == 'noData') {
               return operationComplete(STATUS_ENUM.noData, false);
@@ -3334,12 +3329,11 @@ function getFromSpiraExcel(model, fieldTypeEnums) {
   })
 }
 
-// EXCEL SPECIFIC VARIATION OF THIS FUNCTION handles getting paginated artifacts from Spira and saving them as a single array
+// Get all the data we need from Spira, combining different API operations
 // @param: model - full model object from client
 // @param: fieldTypeEnums - enum of fieldTypes used
 async function getDataFromSpiraExcel(model, fieldTypeEnums) {
-  // 1. get from spira
-  // note we don't do this by getting the count of each artifact first, because of a bug in getting the release count
+  // 1. get Test Cases from spira that are assigned to the logged user 
   var currentPage = 0;
   var artifacts = [];
   var getNextPage = true;
@@ -3375,17 +3369,26 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
     await getArtifactsPage(startRow);
   }
 
-  // 2. if there were no artifacts at all break out now
+  // 2. If there were no artifacts at all break out now
   if (!artifacts.length) return "no artifacts were returned";
 
-  // 3. if artifact has subtype that needs to be retrieved separately, do so
+
+  // 3. Filtering the Test Cases to make sure they belong to the current project and also make sure they have steps - if not, they won't be displayed
+  artifacts = artifacts.filter(function (item) {
+    if ((item.ProjectId == model.currentProject.id) && item[model.currentArtifact.conditionField]) {
+      return item;
+    }
+  });
+
+  // 4. Get the Test Steps of the just-filtered Test Case
   if (model.currentArtifact.hasSubType) {
-    // find the id field
+    // find the TC id field
     var idFieldNameArray = model.fields.filter(function (field) {
       return field.type === fieldTypeEnums.id;
     });
 
-    // if we have an id field, then we can find the id number for each artifact in the array
+    //getting Test Steps
+    // if we have an id field, then we can find the id number for each TS in the array
     if (idFieldNameArray && idFieldNameArray[0].field) {
       //function called below in the foreach call
       async function getArtifactSubs(art) {
@@ -3422,25 +3425,16 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
     }
   }
 
-  // 4.filtering the elements to make sure they belong to the current project and for TestCases, make sure they have steps
-  artifacts = artifacts.filter(function (item) {
-    if ((item.ProjectId == model.currentProject.id) && item[model.currentArtifact.conditionField]) {
-      return item;
-    }
-  });
-
 
   /*
-  5. If artifact has seconday type that needs to be retrieved separately, do so. Also,
-  check for secondary artifacts, then get their target artifacts - ie the actual artifact
-  that will be published in the spreadsheet (based on the secondary Ids)
+  5. At this point, we have TC+TS owned by the user. Now, we need to get those TC that came from TX owned by the user.
   */
   if (model.currentArtifact.hasSecondaryType) {
 
-    //retrieve the secondary type
+    //5.1 Retrieve the Test Sets owned by the user
     currentPage = 0;
     getNextPage = true;
-    var secondaryArtifact = [];
+    var secondaryArtifact = []; //var to store TX objects
 
     async function getSecondaryPage(startRow) {
       await getArtifacts(
@@ -3476,24 +3470,21 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
     if (!secondaryArtifact.length) { secondaryArtifact = null; }
     else {
       if (model.currentArtifact.hasSecondaryTarget) {
-        //In this case, get the target artifacts based on the secondary
-        var targetIds = [];
-
-        secondaryArtifact.forEach(function (item) {
-          //make sure we have only the secondary artifacts of this project and for TestSets, that they are manual type (1)
+        //Populate a list of TX owned by the logged user
+        var targetIds = []; //List of TX Ids owned by the user
+        secondaryArtifact.forEach(function (item, index) {
+          //make sure we have only TestSets of this project and also that they are manual type (1)
           if ((item.ProjectId == model.currentProject.id) && (item[model.currentArtifact.secondaryConditionField] == model.currentArtifact.secondaryConditionValue)) {
             targetIds.push(item[model.currentArtifact.SecondaryTypeField]);
           }
         });
 
         /*
-        5.1 Now that we have the IDs of the secondary artifact, we need to get
-        the secondary target artifacts (ie the related artifacts)
+        5.2 Now that we have the filtered IDs of the TestSets, we need to get the Test Cases + Test Steps that are part of them
         */
-        //First, getting the destination IDs
         currentPage = 0;
         getNextPage = true;
-        var destIds = [];
+        var destIds = []; //List of Test Case Ids we still need to retrieve
 
         for (var i = 0; i < targetIds.length; i++) {
 
@@ -3513,7 +3504,7 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
           })
         }
 
-        //Finally, getting the target artifacts
+        // 5.3 Finally, getting the Test Cases + Test Steps from the Test Sets
 
         currentPage = 0;
         getNextPage = true;
@@ -3531,9 +3522,9 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
             // add the response to the object as well as the association field
             if (response.body) {
               //only add this if passes the validation - for TestCases, if it have steps
-              if(response.body[model.currentArtifact.conditionField]){
-              response.body = { ...response.body, ...destIds[j] };
-              artifacts2 = artifacts2.concat(response.body);
+              if (response.body[model.currentArtifact.conditionField]) {
+                response.body = { ...response.body, ...destIds[j] };
+                artifacts2 = artifacts2.concat(response.body);
               }
             }
           })
@@ -3551,6 +3542,21 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
             return field.type === fieldTypeEnums.id;
           });
 
+          // 5.4 Retrieving extra information to the Test Cases (from TXs): the TX ReleaseId
+
+          if (model.currentArtifact.hasExtraField) {
+            artifacts2.forEach(function (item, index) {
+              secondaryArtifact.forEach(function (item2, index2) {
+                //If TestCase TestSetId = Test Set TestSetId
+                if (item[model.currentArtifact.SecondaryTypeField] == item2[model.currentArtifact.SecondaryTypeField]) {
+                  //get the ReleaseId from Test Set object and copy it to the TestCase object
+                  artifacts2[index][model.currentArtifact.extraFieldName] = secondaryArtifact[index2][model.currentArtifact.extraFieldName];
+                }
+              });
+            });
+          }
+
+          //getting Test Steps
           // if we have an id field, then we can find the id number for each artifact in the array
           if (idFieldNameArray && idFieldNameArray[0].field) {
             //function called below in the foreach call
@@ -3586,7 +3592,7 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
             artifacts2 = artifactsWithSubTypes;
           }
         }
-        //Finally, filter the objects to this project before returning 
+        //At the end, filter the objects again to make sure they belong to the current project before returning
         artifacts = [...artifacts, ...artifacts2];
         if (!artifacts.length) return 'noData';
       }
@@ -3595,6 +3601,7 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
   }
   else {
     //if the artifact is the one we want (not a secondary), add it to the list
+    //for the TestRun application, we never reach this condition, since it is a sum of objects (TC+TS+TX)
     artifacts = artifacts.concat(secondaryArtifact);
   }
   return artifacts;

@@ -68,9 +68,10 @@ var params = {
         // { field: 'incidents', name: 'Incidents', id: 3 },
         // { field: 'releases', name: 'Releases', id: 4, hierarchical: true },
         {
-            field: 'testRuns', name: 'Test Runs', id: 5, conditionField: "IsTestSteps", hasSubType: true, subTypeId: 7, subTypeName: "TestSteps", 
+            field: 'testRuns', name: 'Test Runs', id: 5, conditionField: "IsTestSteps", hasSubType: true, subTypeId: 7, subTypeName: "TestSteps",
             hasSecondaryType: true, SecondaryTypeId: 8, SecondaryTypeField: "TestSetId", secondaryConditionField: "TestRunTypeId", secondaryConditionValue: 1,
-            hasSecondaryTarget: true, secondaryTargetId: 2, SecondaryTargetFieldName: "TestCaseId", associationField: "TestSetTestCaseId"
+            hasSecondaryTarget: true, secondaryTargetId: 2, SecondaryTargetFieldName: "TestCaseId", associationField: "TestSetTestCaseId",
+            hasExtraField: true, extraFieldName: "ReleaseId"
         },
         // { field: 'tasks', name: 'Tasks', id: 6, hasFolders: true },
         //{ field: 'testSteps', name: 'Test Steps', id: 7, disabled: true, hidden: true, isSubType: true },
@@ -80,7 +81,19 @@ var params = {
     //special cases enum
     specialCases: [
         { artifactId: 2, parameter: 'TestStepId', field: 'Description', target: "Call TC:" }
-    ]
+    ],
+    //extra TC fixed fields (that are not retrieved from Spira) to send to the server
+    extraTcFields: {
+        TestRunTypeId: '1',
+        StartDate: (function () {
+            return new Date(Date.now()).toISOString();
+        })(),
+        EndDate: (function () {
+            var dateOffset = new Date(Date.now()).getTime() + 1 * 60000;
+            return new Date(dateOffset).toISOString();
+        })()
+    },
+
 };
 
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system
@@ -88,8 +101,8 @@ var templateFields = {
     testRuns: [
         { field: "TestCaseId", name: "Case ID", type: params.fieldType.id },
         { field: "TestStepId", name: "Step ID", type: params.fieldType.subId, isSubTypeField: true },
-        { field: "Name", name: "Test Case Name", type: params.fieldType.text },
-        { field: "Release", name: "Associated Release(s)", type: params.fieldType.text },
+        { field: "Name", name: "Test Case Name", type: params.fieldType.text, isReadOnly: true },
+        { field: "ReleaseId", name: "Associated Release(s)", type: params.fieldType.release },
         { field: "TestSetId", name: "Set ID", type: params.fieldType.id },
         { field: "TestSetTestCaseId", name: "Set Case Unique ID", type: params.fieldType.id },
         { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC" },
@@ -107,7 +120,14 @@ var templateFields = {
             ]
         },
         { field: "Actual Result", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true },
-        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, sendField: true }
+        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, sendField: true },
+        { field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
+        { field: "BuildId", name: "BuildId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
+        { field: "EstimatedDuration", name: "EstimatedDuration", type: params.fieldType.text, isReadOnly: true, isHidden: true },
+        { field: "ActualDuration", name: "ActualDuration", type: params.fieldType.text, isReadOnly: true, isHidden: true },
+        { field: "ProjectId", name: "ProjectId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
+        { field: "Tags", name: "Tags", type: params.fieldType.text, isReadOnly: true, isHidden: true },
+        { field: "Position", name: "Position", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true }
     ],
 
     // risks: [
