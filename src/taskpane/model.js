@@ -33,6 +33,10 @@ var params = {
         risks: 14
     },
 
+    //field that will be used to create TestCases Shells
+    standardShellField : "TestCaseId",
+    //field that will be used to create TestRun Shells
+    secondaryShellField : "TestSetId",
 
     // enums for different types of field - match custom field prop types where relevant
     fieldType: {
@@ -83,30 +87,39 @@ var params = {
         { artifactId: 2, parameter: 'TestStepId', field: 'Description', target: "Call TC:" }
     ],
     //extra TC fixed fields (that are not retrieved from Spira) to send to the server
-    extraTcFields: {
-        TestRunTypeId: '1',
+    extraTcFixedFields: {
+        TestRunTypeId: 1,
         StartDate: (function () {
             return new Date(Date.now()).toISOString();
         })(),
         EndDate: (function () {
             var dateOffset = new Date(Date.now()).getTime() + 1 * 60000;
             return new Date(dateOffset).toISOString();
-        })()
+        })(),
+        ArtifactTypeId: 5
     },
-
+    extraTsFixedFields: {
+        StartDate: (function () {
+            return new Date(Date.now()).toISOString();
+        })(),
+        EndDate: (function () {
+            var dateOffset = new Date(Date.now()).getTime() + 1000;
+            return new Date(dateOffset).toISOString();
+        })(),
+    },
 };
 
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system
 var templateFields = {
     testRuns: [
-        { field: "TestCaseId", name: "Case ID", type: params.fieldType.id },
+        { field: "TestCaseId", name: "Case ID", type: params.fieldType.id},
         { field: "TestStepId", name: "Step ID", type: params.fieldType.subId, isSubTypeField: true },
         { field: "Name", name: "Test Case Name", type: params.fieldType.text, isReadOnly: true },
         { field: "ReleaseId", name: "Associated Release(s)", type: params.fieldType.release },
-        { field: "TestSetId", name: "Set ID", type: params.fieldType.id },
+        { field: "TestSetId", name: "Set ID", type: params.fieldType.id, shellField: true },
         { field: "TestSetTestCaseId", name: "Set Case Unique ID", type: params.fieldType.id },
         { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC" },
-        { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true, requiredForSubType: true },
+        { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true },//, requiredForSubType: true 
         { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true },
         {
             field: "ExecutionStatusId", name: "Execution Status", type: params.fieldType.drop, isSubTypeField: true, sendField: true,
@@ -119,9 +132,9 @@ var templateFields = {
                 { id: 6, name: "Caution" }
             ]
         },
-        { field: "Actual Result", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true },
+        { field: "ActualResult", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true },
         { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, sendField: true },
-        { field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
+        { field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.text, isReadOnly: true, isHidden: true, },
         { field: "BuildId", name: "BuildId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "EstimatedDuration", name: "EstimatedDuration", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "ActualDuration", name: "ActualDuration", type: params.fieldType.text, isReadOnly: true, isHidden: true },
