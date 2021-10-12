@@ -33,11 +33,14 @@ var params = {
         risks: 14
     },
 
-    //field that will be used to create TestCases Shells
+    //primary field that will be used to create TestCases Shells
     standardShellField : "TestCaseId",
-    //field that will be used to create TestRun Shells
+    //secondary field that will be used to create TestRun Shells
     secondaryShellField : "TestSetId",
-
+    //primary key field to associate Incidents and Test Runs
+    standardAssociationField: "TestStepId",
+    //secondary key field to associate Incidents and Test Runs
+    secondaryAssociationField: "TestRunStepId",
     // enums for different types of field - match custom field prop types where relevant
     fieldType: {
         text: 1,
@@ -65,17 +68,23 @@ var params = {
         tc2ts: 4
     },
 
+    apiCommandModesEnums: {
+        get: 1,
+        post: 2,
+        put: 3
+    },
+
     // enums and various metadata for all artifacts potentially used by the system
     artifacts: [
         // { field: 'requirements', name: 'Requirements', id: 1, hierarchical: true },
         // { field: 'testCases', name: 'Test Cases', id: 2, hasFolders: true, hasSubType: true, subTypeId: 7, subTypeName: "TestSteps" },
-        // { field: 'incidents', name: 'Incidents', id: 3 },
+        //{ field: 'incidents', name: 'Incidents', id: 3, mode: [params.apiCommandModesEnums.post]},
         // { field: 'releases', name: 'Releases', id: 4, hierarchical: true },
         {
-            field: 'testRuns', name: 'Test Runs', id: 5, conditionField: "IsTestSteps", hasSubType: true, subTypeId: 7, subTypeName: "TestSteps",
-            hasSecondaryType: true, SecondaryTypeId: 8, SecondaryTypeField: "TestSetId", secondaryConditionField: "TestRunTypeId", secondaryConditionValue: 1,
-            hasSecondaryTarget: true, secondaryTargetId: 2, SecondaryTargetFieldName: "TestCaseId", associationField: "TestSetTestCaseId",
-            hasExtraField: true, extraFieldName: "ReleaseId"
+            field: 'testRuns', name: 'Test Runs', id: 5, conditionField: "IsTestSteps", hasSubType: true, subTypeId: 7,
+            subTypeName: "TestSteps", hasSecondaryType: true, SecondaryTypeId: 8, SecondaryTypeField: "TestSetId", secondaryConditionField: "TestRunTypeId",
+            secondaryConditionValue: 1, hasSecondaryTarget: true, secondaryTargetId: 2, SecondaryTargetFieldName: "TestCaseId",
+            associationField: "TestSetTestCaseId", hasExtraField: true, extraFieldName: "ReleaseId"
         },
         // { field: 'tasks', name: 'Tasks', id: 6, hasFolders: true },
         //{ field: 'testSteps', name: 'Test Steps', id: 7, disabled: true, hidden: true, isSubType: true },
@@ -115,12 +124,12 @@ var templateFields = {
         { field: "TestCaseId", name: "Case ID", type: params.fieldType.id},
         { field: "TestStepId", name: "Step ID", type: params.fieldType.subId, isSubTypeField: true },
         { field: "Name", name: "Test Case Name", type: params.fieldType.text, isReadOnly: true },
-        { field: "ReleaseId", name: "Associated Release(s)", type: params.fieldType.release },
+        { field: "ReleaseId", name: "Release", type: params.fieldType.release },
         { field: "TestSetId", name: "Set ID", type: params.fieldType.id, shellField: true },
         { field: "TestSetTestCaseId", name: "Set Case Unique ID", type: params.fieldType.id },
-        { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC" },
-        { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true },//, requiredForSubType: true 
-        { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true },
+        { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC", extraIncDesc: true },
+        { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true, extraIncDesc: true },
+        { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true},
         {
             field: "ExecutionStatusId", name: "Execution Status", type: params.fieldType.drop, isSubTypeField: true, sendField: true,
             values: [
@@ -132,15 +141,16 @@ var templateFields = {
                 { id: 6, name: "Caution" }
             ]
         },
-        { field: "ActualResult", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true },
-        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, sendField: true },
+        { field: "ActualResult", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true, extraIncDesc: true},
+        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, sendField: true, extraArtifact: true },
         { field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.text, isReadOnly: true, isHidden: true, },
         { field: "BuildId", name: "BuildId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "EstimatedDuration", name: "EstimatedDuration", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "ActualDuration", name: "ActualDuration", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "ProjectId", name: "ProjectId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "Tags", name: "Tags", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-        { field: "Position", name: "Position", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true }
+        { field: "Position", name: "Position", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true },
+        { field: "ConcurrencyDate", name: "ConcurrencyDate", type: params.fieldType.text, isReadOnly: true, isHidden: true }
     ],
 
     // risks: [

@@ -56,7 +56,7 @@ var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
   },
   INITIAL_HIERARCHY_OUTDENT = -20,
   GET_PAGINATION_SIZE = 100,
-  EXCEL_MAX_ROWS = 1000,
+  EXCEL_MAX_ROWS = 10000,
   FIELD_MANAGEMENT_ENUMS = {
     all: 1,
     standard: 2,
@@ -511,7 +511,6 @@ function putUpdater(body, currentUser, PUTUrl) {
         .put(fullUrl)
         .send(body)
         .set("Content-Type", "application/json", "accepts", "application/json");
-
     return putResult;
   }
 }
@@ -556,6 +555,28 @@ function putArtifactToSpira(entry, user, projectId, artifactTypeId, parentId) {
   var response = putUpdater(JSON_body, user, putUrl);
 
   return response;
+}
+
+// effectively a switch to manage which artifact we have and therefore which API call to use with what data
+// returns the response from the specific post service to Spira
+// @param: entry - object of single specific entry to send to Spira
+// @param: user - user object
+// @param: projectId - int of the current project
+// @param: artifactId - int of the current artifact
+function postArtifactToSpira(entry, user, projectId, artifactTypeId) {
+  //stringify
+  var JSON_body = JSON.stringify(entry),
+    response = "",
+    postUrl = "";
+
+  //send JSON object of new item to artifact specific export function
+  switch (artifactTypeId) {
+    // INCIDENTS
+    case ART_ENUMS.incidents:
+      postUrl = API_PROJECT_BASE + projectId + '/incidents?';
+      break;
+  }
+  return postUrl ? poster(JSON_body, user, postUrl) : null;
 }
 
 /*
@@ -1412,7 +1433,7 @@ async function sendToSpira(model, fieldTypeEnums) {
 
   // 0. SETUP FUNCTION LEVEL VARS
 
-  var entriesLog;
+  var entriesLog, extraEntriesLog;
 
   var fields = model.fields,
     artifact = model.currentArtifact,
@@ -1438,13 +1459,18 @@ async function sendToSpira(model, fieldTypeEnums) {
               sheetData = clearErrorMessages(sheetData);
               //First, send the artifact entries for Spira
               var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact, artifactIsHierarchical);
-              console.log('entriesForExport');
-              console.dir(entriesForExport);
+              var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact, artifactIsHierarchical);
+             // console.log('extraEntriesForExport');
+             // console.dir({ ...'', ...extraEntriesForExport });
 
-              return sendExportEntriesExcel(entriesForExport, model, fieldTypeEnums, fields, artifact).then(function (response) {
+              return sendExportEntriesExcel(entriesForExport, '', model, fieldTypeEnums, fields, artifact, '').then(function (response) {
                 entriesLog = response;
+
+                return sendExportEntriesExcel('', extraEntriesForExport, model, fieldTypeEnums, fields, artifact, entriesLog.associations);
+              }).then(function (responseExtra) { extraEntriesLog = responseExtra; }).catch(function (err) {
+                reject()
               }).finally(function () {
-                resolve(updateSheetWithExportResults(entriesLog, entriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context))
+                resolve(updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context))
               })
             }
             else {
@@ -1481,7 +1507,6 @@ function isValidParent(entriesForExport) {
 }
 
 
-
 // 2. CREATE ARRAY OF ENTRIES
 //2.1 Custom and Standard fields - Sent through the artifact API function (POST/PUT)
 // loop to create artifact objects from each row taken from the spreadsheet
@@ -1514,9 +1539,8 @@ function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact,
         entry.validationMessage = hasProblems;
         // if error free determine what field filtering is required - needed to choose type/subtype fields if subtype is present
       } else {
-        var fieldsToFilter = relevantFields(rowChecks);
+        var fieldsToFilter = relevantFields(model.fields);
         entry = createEntryFromRow(rowToPrep, sheetData, model, fieldTypeEnums, artifactIsHierarchical, lastIndentPosition, fieldsToFilter);
-
         // FOR SUBTYPE ENTRIES add flag on entry if it is a subtype
         if (entry && fieldsToFilter === FIELD_MANAGEMENT_ENUMS.subType) {
           entry.isSubType = true;
@@ -1549,8 +1573,8 @@ function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact,
 // DIFFERENT TO GOOGLE: this uses js ES6 a-sync and a-wait for its function and subfunction
 // check we have some entries and with no errors
 // Create and show a message to tell the user what is going on
-async function sendExportEntriesExcel(entriesForExport, model, fieldTypeEnums, fields, artifact) {
-  if (!entriesForExport.length) {
+async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, model, fieldTypeEnums, fields, artifact, fieldsAssociations) {
+  if (!entriesForExport.length && !extraEntriesForExport.length) {
     popupShow('There are no entries to send to Spira', 'Check Sheet')
     return "nothing to send";
   } else {
@@ -1563,7 +1587,8 @@ async function sendExportEntriesExcel(entriesForExport, model, fieldTypeEnums, f
       // set var for parent - used to designate eg a test case so it can be sent with the test step post
       parentId: -1,
       entriesLength: entriesForExport.length,
-      entries: []
+      entries: [],
+      associations: []
     };
 
 
@@ -1584,6 +1609,16 @@ async function sendExportEntriesExcel(entriesForExport, model, fieldTypeEnums, f
 
       await manageSendingToSpira(entriesForExport[i], model.user, model.currentProject.id, artifact, fields, fieldTypeEnums, log.parentId)
         .then(function (response) {
+          //console.log('response');
+          //console.dir(response);
+
+          //get the association TestRunStepID - TestStepID
+          var association = getAssociationFromResponse(response.fromSpira);
+        //  console.log('association');
+        //  console.dir(association);
+
+          log.associations = [...log.associations, ...association];
+
           // update the parent ID for a subtypes based on the successful API call
           if (artifact.hasSubType) {
             log.parentId = response.parentId;
@@ -1603,6 +1638,7 @@ async function sendExportEntriesExcel(entriesForExport, model, fieldTypeEnums, f
     // We use a function rather than a loop so that we can more readily use promises to chain things together and make the calls happen synchronously
     // we need the calls to be synchronous because we need to do the status and ID of the preceding entry for hierarchical artifacts
     //first, send standard and custom artifact properties
+    //a) Standard Entries (i.e.: Test Runs)
     for (var i = 0; i < entriesForExport.length; i++) {
       if (!entriesForExport[i].skip) {
         if (!log.doNotContinue) {
@@ -1623,6 +1659,33 @@ async function sendExportEntriesExcel(entriesForExport, model, fieldTypeEnums, f
 
       }
     }
+    //b) Extra Entries (i.e.: Incidents associated to Test Run Steps)
+    for (var k = 0; k < extraEntriesForExport.length; k++) {
+      //make sure we don't have any error and we have the comment populated
+      if (Object.keys(extraEntriesForExport[k]).length > 1) {
+        await sendSingleExtraEntry(k);
+      }
+    }
+
+    // loop through association objects to send
+    async function sendSingleExtraEntry(k) {
+      //First, assign the correct TestRunStepID to each Incident object
+      var convertedEntry = await convertExtraEntry(extraEntriesForExport[k], fieldsAssociations);
+
+    //  console.log('convertedEntry');
+    //  console.dir(convertedEntry);
+      //Then, get the Incident object from the model
+      let incidentObject = { id: params.artifactEnums.incidents };
+    //  console.log('incidentObject');
+    //  console.dir(incidentObject);
+
+      await manageSendingToSpira(convertedEntry, model.user, model.currentProject.id, incidentObject, fields, fieldTypeEnums, 0)
+        .then(function (response) {
+          // update the parent ID for a subtypes based on the successful API call
+          log = processSendToSpiraResponse(k, response, extraEntriesForExport, artifact, log, false, true);
+        })
+
+    }
 
     // review all activity and set final status
     log.status = setFinalStatus(log);
@@ -1632,8 +1695,57 @@ async function sendExportEntriesExcel(entriesForExport, model, fieldTypeEnums, f
 }
 
 
+//Function to associate the TestRunStepId to the Test Step ID used to create a new Incident in Spira
+//newIncident: the object contaning the new Incident information to be sent to Spira
+//fieldsAssociation: the association between the TestRunStepId and TestStepId
+//@return the newIncident object containing the correct association 
+async function convertExtraEntry(newIncident, fieldsAssociations) {
+  fieldsAssociations.forEach(function (association) {
+    if (association[params.standardAssociationField] == newIncident[params.secondaryAssociationField]) {
+      //if this is the Test Step we are looking for, associate it with the RunStepID
+      newIncident[params.secondaryAssociationField + 's'] = [association[params.secondaryAssociationField]];
+    }
+  });
+  return newIncident;
+}
+
+
+
+
+//Function to retrieve the TestRunStepID associated with the TestStepID
+//in case the user wants to log an Incident from it
+//input: the raw response of PUT Test Run from the server
+//output: the association output object
+function getAssociationFromResponse(response) {
+  var associations = [];
+  var objResponse = JSON.parse(response);
+  //make sure we have the necessary data
+  if (objResponse[0].hasOwnProperty('TestRunSteps')) {
+    objResponse[0].TestRunSteps.forEach(function (item) {
+      var association = {};
+      if (item[params.standardAssociationField]) {
+        association[params.standardAssociationField] = item[params.standardAssociationField];
+      }
+      if (item[params.secondaryAssociationField]) {
+        association[params.secondaryAssociationField] = item[params.secondaryAssociationField];
+      }
+
+      if (Object.keys(association).length > 1) {
+        associations.push(association);
+      }
+    });
+  }
+  return associations;
+}
+
+
+
+
+
+
+
 // 5. SET MESSAGES AND FORMATTING ON SHEET
-function updateSheetWithExportResults(entriesLog, entriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
+function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
   var bgColors = [],
     notes = [],
     values = [];
@@ -1675,11 +1787,11 @@ function updateSheetWithExportResults(entriesLog, entriesForExport, sheetData, s
   }
 
   var rowFirstCell = sheet.getCell(row + 1, 0);
-    if (rowNotes.length) {
-      rowFirstCell.set({ format: { fill: { color: model.colors.warning } } });
-      rowFirstCell.values = [[rowNotes.join()]];
-    }
-  
+  if (rowNotes.length) {
+    rowFirstCell.set({ format: { fill: { color: model.colors.warning } } });
+    rowFirstCell.values = [[rowNotes.join()]];
+  }
+
   return context.sync().then(function () { return entriesLog; });
 }
 
@@ -1872,41 +1984,128 @@ function manageSendingToSpira(entry, user, projectId, artifact, fields, fieldTyp
     //to do
   } else {
     //Excel
-    return putArtifactToSpira(entry, user, projectId, artifactTypeIdToSend, parentId)
-      .then(function (response) {
-        var errorStatus = response.error;
-        if (!errorStatus) {
-          // get the id/subType id of the updated artifact
-          var artifactIdField = getIdFieldName(fields, fieldTypeEnums, entry.isSubType);
-          //just repeat the id - it's the same 
-          output.newId = entry[artifactIdField];
-          // repeats the output parent ID only if the artifact has a subtype and this entry is NOT a subtype
+    if (artifact.id == params.artifactEnums.testRuns) {
+      return putArtifactToSpira(entry, user, projectId, artifactTypeIdToSend, parentId)
+        .then(function (response) {
+          var errorStatus = response.error;
+          output.fromSpira = response.text;
+          if (!errorStatus) {
+            // get the id/subType id of the updated artifact
+            var artifactIdField = getIdFieldName(fields, fieldTypeEnums, entry.isSubType);
+            //just repeat the id - it's the same 
+            output.newId = entry[artifactIdField];
+            // repeats the output parent ID only if the artifact has a subtype and this entry is NOT a subtype
+            if (artifact.hasSubType && !entry.isSubType) {
+              output.parentId = parentId;
+            }
+            return output;
+
+          }
+        })
+        .catch(function (error) {
+          //we have an error - so set the flag and the message
+          output.error = true;
+          if (error) {
+            output.errorMessage = error;
+          } else {
+            output.errorMessage = "update attempt failed";
+          }
+
+          // reset the parentId if we are not on a subType - to make sure subTypes are not added to the wrong parent
           if (artifact.hasSubType && !entry.isSubType) {
-            output.parentId = parentId;
+            output.parentId = 0;
           }
           return output;
+        });
+    } else if (artifact.id == params.artifactEnums.incidents) {
+      return postArtifactToSpira(entry, user, projectId, artifactTypeIdToSend)
+        .then(function (response) {
+          var errorStatus = response.error;
+          output.fromSpira = response.text;
+          if (!errorStatus) {
+            return output;
+          }
+        })
+        .catch(function (error) {
+          //we have an error - so set the flag and the message
+          output.error = true;
+          if (error) {
+            output.errorMessage = error;
+          } else {
+            output.errorMessage = "incident creation attempt failed";
+          }
 
-        }
-      })
-      .catch(function (error) {
-        //we have an error - so set the flag and the message
-        output.error = true;
-        if (error) {
-          output.errorMessage = error;
-        } else {
-          output.errorMessage = "update attempt failed";
-        }
-
-        // reset the parentId if we are not on a subType - to make sure subTypes are not added to the wrong parent
-        if (artifact.hasSubType && !entry.isSubType) {
-          output.parentId = 0;
-        }
-        return output;
-      });
-
-
+          // reset the parentId if we are not on a subType - to make sure subTypes are not added to the wrong parent
+          if (artifact.hasSubType && !entry.isSubType) {
+            output.parentId = 0;
+          }
+          return output;
+        });
+    }
   }
 }
+
+
+
+/** Function that create Incident objects (not directly related to the main Test Run object)
+ * the incident name is provided by the user, the description is automatically populated 
+ * based on other fields
+ * vars needed: sheetData, artifact, fields, model, fieldTypeEnums, artifactIsHierarchical
+ * @return the incident(s) object populated
+*/
+function createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact, artifactIsHierarchical) {
+  var entriesForExport = [];
+  var fields = model.fields;
+
+  for (var rowToPrep = 0; rowToPrep < sheetData.length; rowToPrep++) {
+    // stop at the first row that is fully blank
+    if (sheetData[rowToPrep].join("") === "") {
+      break;
+    } else {
+
+      // create entry used to populate all relevant data for this row
+      var entry = {};
+      var description = "<p>";
+      var parentId = 0;
+
+      //going thru all the columns
+      for (var i = 0; i < sheetData[rowToPrep].length; i++) {
+
+        //1. Make sure this is a Test Step
+        if (sheetData[rowToPrep][0] == '-1' || sheetData[rowToPrep][0] == '') {
+
+          if (fields[i].type == fieldTypeEnums.subId) {
+            parentId = sheetData[rowToPrep][i];
+          }
+
+          //check if this field has to be at the Incident description and is populated
+          if (fields[i].extraIncDesc && sheetData[rowToPrep][i] != '') {
+            description = description + "<strong><u>" + fields[i].name + ": </u></strong><br />" +
+              sheetData[rowToPrep][i] + "<br /><br />";
+          }
+
+          //check if this row has an extra field and it is populated
+          if (fields[i].extraArtifact && sheetData[rowToPrep][i] != '') {
+            //create the object to send
+            description = description + "<p>";
+            entry.Name = sheetData[rowToPrep][i];
+            entry.Description = description;
+            //create the association field (to be replaced)
+            entry[params.secondaryAssociationField] = parentId;
+          }
+        }
+      }
+
+      if (Object.keys(entry).length != 0) { entriesForExport.push(entry); }
+
+    }
+  }
+  return entriesForExport;
+}
+
+
+
+
 
 // returns the correct parentId for the relevant indent position by looping back through the list of entries
 // returns -1 if no match found
@@ -2096,21 +2295,23 @@ function associationHasProblems(row, artifact) {
   return problem;
 }
 
-// based on field type and conditions, determines what fields are required for a given row
-// e.g. all fields is default and standard, if a subtype is present (eg test step) - should it send only the main type or the sub type fields
-// returns a int representing the relevant enum value
-// @ param: rowChecks - object with different properties for different checks required
-function relevantFields(rowChecks) {
-  var fields = FIELD_MANAGEMENT_ENUMS.all;
-  if (rowChecks.hasSubType) {
-    if (rowChecks.countRequiredFieldsFilled == rowChecks.totalFieldsRequired && !rowChecks.countSubTypeRequiredFields) {
-      fields = FIELD_MANAGEMENT_ENUMS.standard;
-    } else if (rowChecks.countSubTypeRequiredFields == rowChecks.totalSubTypeFieldsRequired && !(rowChecks.countRequiredFields == rowChecks.totalFieldsRequired || rowChecks.subTypeIsBlocked)) {
-      fields = FIELD_MANAGEMENT_ENUMS.subType;
-    }
-  }
+/**
+ * function relevantFields:
+ * for a given artifact, select fields that are not part of the standard TestRun object, i.e.: fields that need extra API calls
+ * @param {*} fields - object with model fields to be filtered
+ * @returns : result - selected field(s)
+ */
+function relevantFields(fields) {
 
-  return fields;
+  var extraFields = [];
+
+  fields.forEach(function (item) {
+    if (item.extraArtifact) {
+      extraFields.push(item.field);
+    }
+
+  });
+  return extraFields;
 }
 
 
@@ -2137,156 +2338,159 @@ function createEntryFromRow(index, rows, model, fieldTypeEnums, artifactIsHierar
     //1.1 We need to turn an array of values in the row into a validated object
     for (var i = 0; i < rows[index].length; i++) {
 
-      var value = null,
-        customType = "",
-        idFromName = 0;
+      if (!fieldsToFilter.includes(fields[i].field)) {
 
-      // double check data validation, convert dropdowns to required int values
-      // sets both the value, and custom types - so that custom fields are handled correctly
-      switch (fields[i].type) {
+        var value = null,
+          customType = "",
+          idFromName = 0;
 
-        // ID fields: restricted to numbers and blank on push, otherwise put
-        case fieldTypeEnums.id:
+        // double check data validation, convert dropdowns to required int values
+        // sets both the value, and custom types - so that custom fields are handled correctly
+        switch (fields[i].type) {
 
-          if (!isNaN(rows[index][i])) {
-            value = rows[index][i];
-          }
-          customType = "IntegerValue";
-          //getting the TC id for later
-          if (i == 0) {
-            parentId = value;
-          }
-          break;
+          // ID fields: restricted to numbers and blank on push, otherwise put
+          case fieldTypeEnums.id:
 
-
-        case fieldTypeEnums.subId:
-          if (!isNaN(rows[index][i])) {
-            value = rows[index][i];
-          }
-          customType = "IntegerValue";
-          break;
-
-        // INT fields
-        case fieldTypeEnums.int:
-          // only set the value if a number has been returned
-          if (!isNaN(rows[index][i])) {
-            value = rows[index][i];
+            if (!isNaN(rows[index][i])) {
+              value = rows[index][i];
+            }
             customType = "IntegerValue";
-          }
-          break;
+            //getting the TC id for later
+            if (i == 0) {
+              parentId = value;
+            }
+            break;
 
-        // DECIMAL fields
-        case fieldTypeEnums.num:
-          // only set the value if a number has been returned
-          if (!isNaN(rows[index][i])) {
+
+          case fieldTypeEnums.subId:
+            if (!isNaN(rows[index][i])) {
+              value = rows[index][i];
+            }
+            customType = "IntegerValue";
+            break;
+
+          // INT fields
+          case fieldTypeEnums.int:
+            // only set the value if a number has been returned
+            if (!isNaN(rows[index][i])) {
+              value = rows[index][i];
+              customType = "IntegerValue";
+            }
+            break;
+
+          // DECIMAL fields
+          case fieldTypeEnums.num:
+            // only set the value if a number has been returned
+            if (!isNaN(rows[index][i])) {
+              value = rows[index][i];
+              customType = "DecimalValue";
+            }
+            break;
+
+          // BOOL as Sheets has no bool validation, a yes/no dropdown is used
+          case fieldTypeEnums.bool:
+            // 'True' and 'False' don't work as dropdown choices, so have to convert back
+            if (rows[index][i] == "Yes") {
+              value = true;
+              customType = "BooleanValue";
+            } else if (rows[index][i] == "No") {
+              value = false;
+              customType = "BooleanValue";
+            }
+            break;
+
+          // DATES - parse the data and add prefix/suffix for WCF
+          case fieldTypeEnums.date:
+            if (rows[index][i]) {
+              // for Excel, dates are returned as days since 1900 - so we need to adjust this for JS date formats
+              const DAYS_BETWEEN_1900_1970 = 25567 + 2;
+              const dateInMs = (rows[index][i] - DAYS_BETWEEN_1900_1970) * 86400 * 1000;
+              value = convertLocalToUTC(new Date(dateInMs), dateInMs);
+              customType = "DateTimeValue";
+            }
+            break;
+
+          // ARRAY fields are for multiselect lists - currently not supported so just push value into an array to make sure server handles it correctly
+          case fieldTypeEnums.arr:
+            if (rows[index][i]) {
+              value = [rows[index][i]];
+              customType = ""; // array fields not used for custom properties here
+            }
+            break;
+
+          // DROPDOWNS - get id from relevant name, if one is present
+          case fieldTypeEnums.drop:
+            idFromName = getIdFromName(rows[index][i], fields[i].values);
+            if (idFromName) {
+              value = idFromName;
+              customType = "IntegerValue";
+            }
+            break;
+
+          // MULTIDROPDOWNS - get id from relevant name, if one is present, set customtype to list value
+          case fieldTypeEnums.multi:
+            idFromName = getIdFromName(rows[index][i], fields[i].values);
+            if (idFromName) {
+              value = [idFromName];
+              customType = "IntegerListValue";
+            }
+            break;
+
+          // USER fields - get id from relevant name, if one is present
+          case fieldTypeEnums.user:
+            idFromName = getIdFromName(rows[index][i], model.projectUsers);
+            if (idFromName) {
+              value = idFromName;
+              customType = "IntegerValue";
+            }
+            break;
+
+          // COMPONENT fields - get id from relevant name, if one is present
+          case fieldTypeEnums.component:
+            idFromName = getIdFromName(rows[index][i], model.projectComponents);
+            if (idFromName) {
+              value = idFromName;
+              // component is multi select for test cases but not for other artifacts
+              customType = fields[i].isMulti ? "IntegerListValue" : "IntegerValue";
+            }
+            break;
+
+          // RELEASE fields - get id from relevant name, if one is present
+          case fieldTypeEnums.release:
+            idFromName = getIdFromName(rows[index][i], model.projectReleases);
+            if (idFromName) {
+              value = idFromName;
+              customType = "IntegerValue";
+            }
+            break;
+
+          // All other types
+          default:
+            // just assign the value to the cell - used for text
             value = rows[index][i];
-            customType = "DecimalValue";
-          }
-          break;
-
-        // BOOL as Sheets has no bool validation, a yes/no dropdown is used
-        case fieldTypeEnums.bool:
-          // 'True' and 'False' don't work as dropdown choices, so have to convert back
-          if (rows[index][i] == "Yes") {
-            value = true;
-            customType = "BooleanValue";
-          } else if (rows[index][i] == "No") {
-            value = false;
-            customType = "BooleanValue";
-          }
-          break;
-
-        // DATES - parse the data and add prefix/suffix for WCF
-        case fieldTypeEnums.date:
-          if (rows[index][i]) {
-            // for Excel, dates are returned as days since 1900 - so we need to adjust this for JS date formats
-            const DAYS_BETWEEN_1900_1970 = 25567 + 2;
-            const dateInMs = (rows[index][i] - DAYS_BETWEEN_1900_1970) * 86400 * 1000;
-            value = convertLocalToUTC(new Date(dateInMs), dateInMs);
-            customType = "DateTimeValue";
-          }
-          break;
-
-        // ARRAY fields are for multiselect lists - currently not supported so just push value into an array to make sure server handles it correctly
-        case fieldTypeEnums.arr:
-          if (rows[index][i]) {
-            value = [rows[index][i]];
-            customType = ""; // array fields not used for custom properties here
-          }
-          break;
-
-        // DROPDOWNS - get id from relevant name, if one is present
-        case fieldTypeEnums.drop:
-          idFromName = getIdFromName(rows[index][i], fields[i].values);
-          if (idFromName) {
-            value = idFromName;
-            customType = "IntegerValue";
-          }
-          break;
-
-        // MULTIDROPDOWNS - get id from relevant name, if one is present, set customtype to list value
-        case fieldTypeEnums.multi:
-          idFromName = getIdFromName(rows[index][i], fields[i].values);
-          if (idFromName) {
-            value = [idFromName];
-            customType = "IntegerListValue";
-          }
-          break;
-
-        // USER fields - get id from relevant name, if one is present
-        case fieldTypeEnums.user:
-          idFromName = getIdFromName(rows[index][i], model.projectUsers);
-          if (idFromName) {
-            value = idFromName;
-            customType = "IntegerValue";
-          }
-          break;
-
-        // COMPONENT fields - get id from relevant name, if one is present
-        case fieldTypeEnums.component:
-          idFromName = getIdFromName(rows[index][i], model.projectComponents);
-          if (idFromName) {
-            value = idFromName;
-            // component is multi select for test cases but not for other artifacts
-            customType = fields[i].isMulti ? "IntegerListValue" : "IntegerValue";
-          }
-          break;
-
-        // RELEASE fields - get id from relevant name, if one is present
-        case fieldTypeEnums.release:
-          idFromName = getIdFromName(rows[index][i], model.projectReleases);
-          if (idFromName) {
-            value = idFromName;
-            customType = "IntegerValue";
-          }
-          break;
-
-        // All other types
-        default:
-          // just assign the value to the cell - used for text
-          value = rows[index][i];
-          customType = "StringValue";
-          break;
-      }
-
-      // CUSTOM FIELDS:
-      // check whether field is marked as a custom field and as the required property number
-      if (fields[i].isCustom && fields[i].propertyNumber) {
-
-        // if field has data create the object
-        if (value) {
-          var customObject = {};
-          customObject.PropertyNumber = fields[i].propertyNumber;
-          customObject[customType] = value;
-
-          entry.CustomProperties.push(customObject);
+            customType = "StringValue";
+            break;
         }
 
-        // STANDARD FIELDS:
-        // add standard fields in standard way - only add if field contains data
-      } else if (value) {
-        // if the standard field is a multi select type as set in the switch above, pass the value through in an array
-        entry[fields[i].field] = (customType == "IntegerListValue") ? [value] : value;
+        // CUSTOM FIELDS:
+        // check whether field is marked as a custom field and as the required property number
+        if (fields[i].isCustom && fields[i].propertyNumber) {
+
+          // if field has data create the object
+          if (value) {
+            var customObject = {};
+            customObject.PropertyNumber = fields[i].propertyNumber;
+            customObject[customType] = value;
+
+            entry.CustomProperties.push(customObject);
+          }
+
+          // STANDARD FIELDS:
+          // add standard fields in standard way - only add if field contains data
+        } else if (value) {
+          // if the standard field is a multi select type as set in the switch above, pass the value through in an array
+          entry[fields[i].field] = (customType == "IntegerListValue") ? [value] : value;
+        }
       }
     }
 
@@ -2359,7 +2563,6 @@ function createEntryFromRow(index, rows, model, fieldTypeEnums, artifactIsHierar
 
     //add the TestSteps to the TC main object
     entry = { ...entry, ...tsObject }
-    console.dir(entry);
     return entry;
   }
   else {
@@ -2583,7 +2786,7 @@ function processSendToSpiraResponse(i, sentToSpira, entriesForExport, artifact, 
   response.details = sentToSpira;
   var operationString = "";
   if (isComment) { operationString = " Comment* "; }
-  if (isAssociation) { operationString = " Association "; }
+  if (isAssociation) { operationString = " Incident "; }
 
   // handle success and error cases
   if (sentToSpira.error) {
