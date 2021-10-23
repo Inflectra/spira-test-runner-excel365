@@ -549,9 +549,8 @@ function putArtifactToSpira(entry, user, projectId, artifactTypeId, parentId) {
   }
 
   //2. Put the TesRun
-
   var JSON_body = "[" + JSON.stringify(entry) + "]",
-    putUrl = API_PROJECT_BASE + projectId + '/test-runs' + '?';;
+    putUrl = API_PROJECT_BASE + projectId + '/test-runs' + '?';
   var response = putUpdater(JSON_body, user, putUrl);
 
   return response;
@@ -1243,15 +1242,7 @@ function contentFormattingSetter(sheet, model) {
 // @param: bgColor - string color to set on background as hex code (eg '#ffffff')
 // @param: name - string description for the protected range
 function protectColumn(sheet, columnNumber, rowLength, bgColor, name) {
-  // only for google as cannot protect individual cells easily in Excel
   if (IS_GOOGLE) {
-    // create range
-    var range = sheet.getRange(2, columnNumber, rowLength);
-    range.setBackground(bgColor)
-      .protect()
-      .setDescription(name)
-      .setWarningOnly(true);
-
   } else {
     var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
 
@@ -1282,6 +1273,81 @@ function protectColumn(sheet, columnNumber, rowLength, bgColor, name) {
     };
   }
 
+}
+
+// makes a specific cell read-only
+// @param: sheet - the sheet object
+// @param: col - int of column to protect
+// @param: row - int of the row to protect
+// @param: bgColor - string color to set on background as hex code (eg '#ffffff')
+// @param: name - string description for the protected range
+function protectCell(sheet, col, row, bgColor, name) {
+  if (IS_GOOGLE) {
+  } else {
+    var cellRange = sheet.getCell(row + 1, col);
+
+    // set the background color
+    cellRange.set({ format: { fill: { color: bgColor } } });
+
+    // now we can add data validation
+    // the easiest hack way to not allow any entry into the cell is to make sure its text length can only be zero
+    cellRange.dataValidation.clear();
+    var textLengthZero = {
+      textLength: {
+        formula1: 0,
+        operator: Excel.DataValidationOperator.equalTo
+      }
+    };
+    cellRange.dataValidation.rule = textLengthZero;
+
+    cellRange.dataValidation.prompt = {
+      message: name,
+      showPrompt: true,
+      title: "Protected Field."
+    };
+    cellRange.dataValidation.errorAlert = {
+      message: name,
+      showAlert: true,
+      style: "Stop",
+      title: "Protected Field."
+    };
+  }
+
+}
+
+// makes a specific row read-only
+// @param: sheet - the sheet object
+// @param: row - int of the row to protect
+// @param: bgColor - string color to set on background as hex code (eg '#ffffff')
+// @param: name - string description for the protected range
+function protectRow(sheet, colSize, startRow, endRow, bgColor, name) {
+  if (IS_GOOGLE) {
+  } else {
+    var rowRange = sheet.getRangeByIndexes(startRow + 1, 0, endRow - startRow, colSize);
+    // set the background color
+    rowRange.set({ format: { fill: { color: bgColor } } });
+    // now we can add data validation
+    // the easiest hack way to not allow any entry into the cell is to make sure its text length can only be zero
+    rowRange.dataValidation.clear();
+    var textLengthZero = {
+      textLength: {
+        formula1: 0,
+        operator: Excel.DataValidationOperator.equalTo
+      }
+    };
+    rowRange.dataValidation.rule = textLengthZero;
+    rowRange.dataValidation.prompt = {
+      message: name,
+      showPrompt: true,
+      title: "Protected Field."
+    };
+    rowRange.dataValidation.errorAlert = {
+      message: name,
+      showAlert: true,
+      style: "Stop",
+      title: "Protected Field."
+    };
+  }
 }
 
 
@@ -1402,7 +1468,6 @@ function clearErrorMessages(sheetData) {
         catch (err) {
           //do nothing
         }
-
       }
       //also, add -1 as ID for blank (invalid) new PUT values
       if (!sheetData[rowToPrep][0]) {
@@ -1437,7 +1502,6 @@ async function sendToSpira(model, fieldTypeEnums) {
 
   var fields = model.fields,
     artifact = model.currentArtifact,
-    artifactIsHierarchical = artifact.hierarchical,
     requiredSheetName = model.currentArtifact.name + ", PR-" + model.currentProject.id
 
   // 1. get the active spreadsheet and first sheet
@@ -1458,19 +1522,25 @@ async function sendToSpira(model, fieldTypeEnums) {
               //Clear error messages from the ID fields, if any
               sheetData = clearErrorMessages(sheetData);
               //First, send the artifact entries for Spira
-              var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact, artifactIsHierarchical);
-              var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact, artifactIsHierarchical);
-             // console.log('extraEntriesForExport');
-             // console.dir({ ...'', ...extraEntriesForExport });
+              var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
+              // console.log('entriesForExport');
+              // console.log(entriesForExport);
+
+              var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
+              // console.log('extraEntriesForExport');
+              // console.log(extraEntriesForExport);
 
               return sendExportEntriesExcel(entriesForExport, '', model, fieldTypeEnums, fields, artifact, '').then(function (response) {
                 entriesLog = response;
-
+                //  console.log('entriesLog');
+                //  console.log(entriesLog);
                 return sendExportEntriesExcel('', extraEntriesForExport, model, fieldTypeEnums, fields, artifact, entriesLog.associations);
-              }).then(function (responseExtra) { extraEntriesLog = responseExtra; }).catch(function (err) {
+              }).then(function (responseExtra) {
+                extraEntriesLog = responseExtra;
+              }).catch(function (err) {
                 reject()
               }).finally(function () {
-                resolve(updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context))
+                resolve(updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context))
               })
             }
             else {
@@ -1510,8 +1580,8 @@ function isValidParent(entriesForExport) {
 // 2. CREATE ARRAY OF ENTRIES
 //2.1 Custom and Standard fields - Sent through the artifact API function (POST/PUT)
 // loop to create artifact objects from each row taken from the spreadsheet
-// vars needed: sheetData, artifact, fields, model, fieldTypeEnums, artifactIsHierarchical,
-function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact, artifactIsHierarchical) {
+// vars needed: sheetData, artifact, fields, model, fieldTypeEnums,
+function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact) {
   var lastIndentPosition = null,
     entriesForExport = [];
 
@@ -1540,14 +1610,10 @@ function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact,
         // if error free determine what field filtering is required - needed to choose type/subtype fields if subtype is present
       } else {
         var fieldsToFilter = relevantFields(model.fields);
-        entry = createEntryFromRow(rowToPrep, sheetData, model, fieldTypeEnums, artifactIsHierarchical, lastIndentPosition, fieldsToFilter);
+        entry = createEntryFromRow(rowToPrep, sheetData, model, fieldTypeEnums, lastIndentPosition, fieldsToFilter);
         // FOR SUBTYPE ENTRIES add flag on entry if it is a subtype
         if (entry && fieldsToFilter === FIELD_MANAGEMENT_ENUMS.subType) {
           entry.isSubType = true;
-        }
-        // FOR HIERARCHICAL ARTIFACTS update the last indent position before going to the next entry to make sure relative indent is set correctly
-        if (entry && artifactIsHierarchical) {
-          lastIndentPosition = entry.indentPosition;
         }
       }
 
@@ -1594,12 +1660,6 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
 
     // loop through objects to send and update the log
     async function sendSingleEntry(i) {
-      // set the correct parentId for hierarchical artifacts
-      // set before launching the API call as we need to look back through previous entries
-      if (artifact.hierarchical) {
-        log.parentId = getHierarchicalParentId(entriesForExport[i].indentPosition, log.entries);
-      }
-
       //if we not have a parent ID yet, set the correct parentId artifact for subtypes (needed for POST URL)
       if (Number(log.parentId) == -1 && artifact.hasSubType && entriesForExport[i].isSubType) {
         log.parentId = getAssociationParentId(entriesForExport, i, artifact.id);
@@ -1609,25 +1669,19 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
 
       await manageSendingToSpira(entriesForExport[i], model.user, model.currentProject.id, artifact, fields, fieldTypeEnums, log.parentId)
         .then(function (response) {
-          //console.log('response');
-          //console.dir(response);
+          var association = null;
 
-          //get the association TestRunStepID - TestStepID
-          var association = getAssociationFromResponse(response.fromSpira);
-        //  console.log('association');
-        //  console.dir(association);
-
-          log.associations = [...log.associations, ...association];
+          if (!response.error) {
+            //get the association TestRunStepID - TestStepID
+            association = getAssociationFromResponse(response.fromSpira);
+            log.associations = [...log.associations, ...association];
+          }
 
           // update the parent ID for a subtypes based on the successful API call
           if (artifact.hasSubType) {
             log.parentId = response.parentId;
           }
-          log = processSendToSpiraResponse(i, response, entriesForExport, artifact, log, false, false);
-          if (response.error && artifact.hierarchical) {
-            // break out of the recursive loop
-            log.doNotContinue = true;
-          }
+          log = processSendToSpiraResponse(i, response, entriesForExport, artifact, log, false);
         })
       //reset the variable to the next position
       log.parentId = -1;
@@ -1672,17 +1726,13 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
       //First, assign the correct TestRunStepID to each Incident object
       var convertedEntry = await convertExtraEntry(extraEntriesForExport[k], fieldsAssociations);
 
-    //  console.log('convertedEntry');
-    //  console.dir(convertedEntry);
       //Then, get the Incident object from the model
       let incidentObject = { id: params.artifactEnums.incidents };
-    //  console.log('incidentObject');
-    //  console.dir(incidentObject);
 
       await manageSendingToSpira(convertedEntry, model.user, model.currentProject.id, incidentObject, fields, fieldTypeEnums, 0)
         .then(function (response) {
           // update the parent ID for a subtypes based on the successful API call
-          log = processSendToSpiraResponse(k, response, extraEntriesForExport, artifact, log, false, true);
+          log = processSendToSpiraResponse(k, response, extraEntriesForExport, artifact, log, true);
         })
 
     }
@@ -1704,6 +1754,7 @@ async function convertExtraEntry(newIncident, fieldsAssociations) {
     if (association[params.standardAssociationField] == newIncident[params.secondaryAssociationField]) {
       //if this is the Test Step we are looking for, associate it with the RunStepID
       newIncident[params.secondaryAssociationField + 's'] = [association[params.secondaryAssociationField]];
+      delete newIncident[params.secondaryAssociationField];
     }
   });
   return newIncident;
@@ -1745,13 +1796,16 @@ function getAssociationFromResponse(response) {
 
 
 // 5. SET MESSAGES AND FORMATTING ON SHEET
-function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
+function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
   var bgColors = [],
     notes = [],
     values = [];
-  var associationCounter = 0;
+  var extraFieldCounter = 0;
+  var row = 0;
+  var entriesCounter = 0;
+
   // first handle cell formatting
-  for (var row = 0; row < entriesForExport.length; row++) {
+  while (sheetData[row].join("") !== "") {
     var rowBgColors = [],
       rowNotes = [],
       rowValues = [];
@@ -1759,39 +1813,80 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExp
     for (var col = 0; col < fields.length; col++) {
       var bgColor,
         note = null,
+        extraFieldNote = null,
         associationNote = null,
         value = sheetData[row][col];
+      var cellRange = sheet.getCell(row + 1, col);
 
       // we may have more rows than entries - because the entries can be stopped early (eg when an error is found on a hierarchical artifact)
       if (entriesLog != null) {
-        if (entriesLog.entries.length > row) {
-          // first handle when we are dealing with data that has been sent to Spira
-          var isSubType = (entriesLog.entries[row].details && entriesLog.entries[row].details.entry && entriesLog.entries[row].details.entry.isSubType) ? entriesLog.entries[row].details.entry.isSubType : false;
-          bgColor = setFeedbackBgColor(sheetData[row][col], entriesLog.entries[row].error, fields[col], fieldTypeEnums, artifact, model.colors);
-          value = setFeedbackValue(sheetData[row][col], entriesLog.entries[row].error, fields[col], fieldTypeEnums, entriesLog.entries[row].newId || "", isSubType, col);
-          note = setFeedbackNote(sheetData[row][col], entriesLog.entries[row].error, fields[col], fieldTypeEnums, entriesLog.entries[row].message, value);
+        //check for extra fields error
+        if (fields[col].extraArtifact && extraEntriesLog != null && sheetData[row][col] != '') {
+          if (extraEntriesLog.entries[extraFieldCounter]) {
+            if (extraEntriesLog.entries[extraFieldCounter].error) {
+              bgColor = model.colors.warning;
+              extraFieldNote = 'This incident could not be created in Spira due to an unkown error. ' +
+                'Please check your user permissions and the spreadsheet data. If the problem persists, please contact your administrator.';
+            }
+            else {
+              //setting up the results comments for extra files (aka Incidents)
+              var comments = context.workbook.comments;
+              comments.add(cellRange, 'Spira Incident ID ' + extraEntriesLog.entries[extraFieldCounter].details.resultId);
+            }
+          }
+          extraFieldCounter++;
         }
+        else if (col == 0 && !fields[col].extraArtifact && (sheetData[row][col] != "" && sheetData[row][col] != "-1")) {
+          //we only log error info to the head row of each Test Run
+          bgColor = setFeedbackBgColor(sheetData[row][col], entriesLog.entries[entriesCounter].error, fields[col], fieldTypeEnums, artifact, model.colors);
+          value = setFeedbackValue(sheetData[row][col], entriesLog.entries[entriesCounter].error, fields[col], fieldTypeEnums, entriesLog.entries[entriesCounter].newId || "", null, col);
+          note = setFeedbackNote(sheetData[row][col], entriesLog.entries[entriesCounter].error, fields[col], fieldTypeEnums, entriesLog.entries[entriesCounter].message, value);
+
+          //setting up the results comments for Test Runs
+          if (!entriesLog.entries[entriesCounter].error) {
+            var comments = context.workbook.comments;
+            comments.add(cellRange, 'Spira TestRun ID ' + entriesLog.entries[entriesCounter].details.resultId);
+          }
+          entriesCounter++;
+        }
+        else if (col == 0 && sheetData[row][col] == "-1") {
+          //clear internal values, so they are not displayed to the user
+          value = '';
+        }
+
+        if (note) {
+          rowNotes.push(note);
+          note = null;
+        }
+
+        if (extraFieldNote) {
+          //Handling Excel bug: Some versions does not accept adding comments. In these cases, we write the text in the cell
+          try {
+            var comments = context.workbook.comments;
+            comments.add(cellRange, extraFieldNote);
+          }
+          catch (err) {
+            value = sheetData[row][col] + ' - ' + extraFieldNote;
+          }
+        }
+
+        if (bgColor) {
+          cellRange.set({ format: { fill: { color: bgColor } } });
+          bgColor = null;
+        }
+        cellRange.values = [[value]];
+        value = null;
+      }
+
+
+      var rowFirstCell = sheet.getCell(row + 1, 0);
+      if (rowNotes.length) {
+        rowFirstCell.set({ format: { fill: { color: model.colors.warning } } });
+        rowFirstCell.values = [[rowNotes.join()]];
       }
     }
-
-    var cellRange = sheet.getCell(row + 1, col);
-    if (note) rowNotes.push(note);
-
-    if (bgColor) {
-      cellRange.set({ format: { fill: { color: bgColor } } });
-
-    }
-    cellRange.values = [[value]];
-
-
+    row++;
   }
-
-  var rowFirstCell = sheet.getCell(row + 1, 0);
-  if (rowNotes.length) {
-    rowFirstCell.set({ format: { fill: { color: model.colors.warning } } });
-    rowFirstCell.values = [[rowNotes.join()]];
-  }
-
   return context.sync().then(function () { return entriesLog; });
 }
 
@@ -1802,19 +1897,8 @@ function checkSingleEntryForErrors(singleEntry, log, artifact) {
     response.error = true;
     response.message = singleEntry.validationMessage;
     log.errorCount++;
+    log.entries.push(response);
 
-    // stop if the artifact is hierarchical because we don't know what side effects there could be to any further items.
-    if (artifact.hierarchical) {
-      log.doNotContinue = true;
-      response.message += " - no further entries were sent.";
-      // make sure to push the response so that the client can process error message
-      log.entries.push(response);
-      // we do not call this function again with i++ so that we effectively break out of the loop
-      // review all activity and set final status
-      log.status = log.errorCount ? (log.errorCount == log.entriesLength ? STATUS_ENUM.allError : STATUS_ENUM.someError) : STATUS_ENUM.allSuccess;
-    } else {
-      log.entries.push(response);
-    }
     // skip if a sub type row does not have a parent to hook to
   } else if (singleEntry.isSubType && !log.parentId) {
     response.error = true;
@@ -1989,6 +2073,7 @@ function manageSendingToSpira(entry, user, projectId, artifact, fields, fieldTyp
         .then(function (response) {
           var errorStatus = response.error;
           output.fromSpira = response.text;
+
           if (!errorStatus) {
             // get the id/subType id of the updated artifact
             var artifactIdField = getIdFieldName(fields, fieldTypeEnums, entry.isSubType);
@@ -1998,6 +2083,10 @@ function manageSendingToSpira(entry, user, projectId, artifact, fields, fieldTyp
             if (artifact.hasSubType && !entry.isSubType) {
               output.parentId = parentId;
             }
+            //getting the resultId field
+            var artifactKeyField = params.standardResultField;
+            var jsonResponse = JSON.parse(response.text);
+            output.resultId = jsonResponse[0][artifactKeyField];
             return output;
 
           }
@@ -2023,6 +2112,9 @@ function manageSendingToSpira(entry, user, projectId, artifact, fields, fieldTyp
           var errorStatus = response.error;
           output.fromSpira = response.text;
           if (!errorStatus) {
+            var artifactKeyField = params.secondaryResultField;
+            var jsonResponse = JSON.parse(response.text);
+            output.resultId = jsonResponse[artifactKeyField];
             return output;
           }
         })
@@ -2050,10 +2142,10 @@ function manageSendingToSpira(entry, user, projectId, artifact, fields, fieldTyp
 /** Function that create Incident objects (not directly related to the main Test Run object)
  * the incident name is provided by the user, the description is automatically populated 
  * based on other fields
- * vars needed: sheetData, artifact, fields, model, fieldTypeEnums, artifactIsHierarchical
+ * vars needed: sheetData, artifact, fields, model, fieldTypeEnums,
  * @return the incident(s) object populated
 */
-function createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact, artifactIsHierarchical) {
+function createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact) {
   var entriesForExport = [];
   var fields = model.fields;
 
@@ -2096,7 +2188,10 @@ function createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, arti
         }
       }
 
-      if (Object.keys(entry).length != 0) { entriesForExport.push(entry); }
+      if (Object.keys(entry).length != 0) {
+
+        entriesForExport.push(entry);
+      }
 
     }
   }
@@ -2322,12 +2417,11 @@ function relevantFields(fields) {
 // @param: row - a 'row' of data that contains a single object representing all fields
 // @param: model - full model with info about fields, dropdowns, users, etc
 // @param: fieldTypeEnums - object of all field types with enums
-// @param: artifactIsHierarchical - bool to tell function if this artifact has hierarchy (eg RQ and RL)
 // @param: lastIndentPosition - int used for calculating relative indents for hierarchical artifacts
 // @param: fieldsToFilter - enum used for selecting fields to not add to object - defaults to using all if omitted
 // @param: isUpdate - bool to flag id this is an update operation. If false, it is a creation operation
 // @param: isComment - bool to flag if we will return a comment entry (true) or custom/standard (false)
-function createEntryFromRow(index, rows, model, fieldTypeEnums, artifactIsHierarchical, lastIndentPosition, fieldsToFilter) {
+function createEntryFromRow(index, rows, model, fieldTypeEnums, lastIndentPosition, fieldsToFilter) {
   var fields = model.fields;
   var entry = {};
   var parentId = 0;
@@ -2781,12 +2875,11 @@ function setRelativePosition(indentCount, lastIndentPosition) {
 }
 
 // anaylses the response from posting an item to Spira, and handles updating the log and displaying any messages to the user
-function processSendToSpiraResponse(i, sentToSpira, entriesForExport, artifact, log, isComment, isAssociation) {
+function processSendToSpiraResponse(i, sentToSpira, entriesForExport, artifact, log, isExtra) {
   var response = {};
   response.details = sentToSpira;
   var operationString = "";
-  if (isComment) { operationString = " Comment* "; }
-  if (isAssociation) { operationString = " Incident "; }
+  if (isExtra) { operationString = " Incident "; }
 
   // handle success and error cases
   if (sentToSpira.error) {
@@ -2799,63 +2892,19 @@ function processSendToSpiraResponse(i, sentToSpira, entriesForExport, artifact, 
     }
     else {
       if (sentToSpira.errorMessage.status == 400) {
-        try {
-          let parser = new DOMParser();
-          let doc = parser.parseFromString(sentToSpira.errorMessage.response.text, 'text/html');
-          try {
-            let errorMessage2 = doc
-              .querySelector('p:nth-of-type(2)')
-              .innerHTML.split(" '")[1]
-              .split("'.")[0];
-            response.message = errorMessage2;
-          }
-          catch (err) {
-            try {
-              let htmlError = doc.querySelector('string').innerHTML;
-              response.message = htmlError;
-            }
-            catch (err) {
-              try {
-                let htmlError2 = Array.from(doc.querySelectorAll('messages message'));
-                let completeMessage = '';
-                htmlError2.forEach((value) => {
-                  completeMessage += value.innerHTML + ' / ';
-                });
-                response.message = completeMessage.slice(0, -2);
-              }
-              catch (err) {
-                response.message = "Update attempt failed. Please check your data or contact your system administrator.";
-              }
-            }
-          }
-        }
-        catch (err) {
-          response.message = "Update attempt failed. Please check your data or contact your system administrator.";
-        }
+        response.message = "Error: The Test Run could not be created. Please check your data and try again.";
       }
       else {
         response.message = sentToSpira.errorMessage;
       }
     }
     //Sets error HTML modals
-    if (artifact.hierarchical) {
-      // if there is an error on any hierarchical artifact row, break out of the loop to prevent entries being attached to wrong parent
-      popupShow('Error sending ' + operationString + (i + 1) + ' of ' + (entriesForExport.length) + ' - sending stopped to avoid indenting entries incorrectly', 'Progress')
-    } else {
-      popupShow('Error sending ' + operationString + (i + 1) + ' of ' + (entriesForExport.length), 'Progress');
-    }
+    popupShow('Error sending ' + operationString + (i + 1) + ' of ' + (entriesForExport.length), 'Progress');
   }
   else {
     log.successCount++;
     response.newId = sentToSpira.newId;
 
-    // if artifact is hierarchical save relevant information to work out how to indent
-    if (artifact.hierarchical) {
-      response.details.hierarchyInfo = {
-        id: sentToSpira.newId,
-        indent: entriesForExport[i].indentPosition
-      }
-    }
     //modal that displays the status of each artifact sent
     popupShow('Sent ' + operationString + (i + 1) + ' of ' + (entriesForExport.length) + '...', 'Progress');
   }
@@ -3203,11 +3252,37 @@ function processDataFromSpiraExcel(artifacts, model, fieldTypeEnums) {
       range = sheet.getRangeByIndexes(1, 0, artifacts.length, model.fields.length);
     range.values = artifactsAsCells;
 
+    // 7. Make specific cells read-only 
+    artifactsAsCells.forEach(function (row, rowCounter) {
+
+      var isTestCase = (row[0] != '' && row[0] != '-1');
+
+      row.forEach(function (col, colCounter) {
+        if (isTestCase) {
+          //Make test steps cells read-only for Test Case rows  
+          if (model.fields[colCounter].isSubTypeField) {
+            protectCell(sheet, colCounter, rowCounter, model.colors.bgReadOnly, "Not available for TestCases.");
+          }
+        }
+        else {
+          //release not available for Test Steps
+          if (model.fields[colCounter].type == params.fieldType.release) {
+            protectCell(sheet, colCounter, rowCounter, model.colors.bgReadOnly, "Not available for TestSteps.");
+          }
+        }
+      });
+      rowCounter++;
+    });
+
+    // 8.Make other cells protected (the user can't add new data)
+    protectRow(sheet, model.fields.length, artifactsAsCells.length, EXCEL_MAX_ROWS, model.colors.bgReadOnly, "Can't add new data.");
+
     return context.sync()
       .then(function () {
         return artifactsAsCells;
       })
   })
+
 }
 
 // matches data against the fields to be shown in the spreadsheet - not all data fields are shown

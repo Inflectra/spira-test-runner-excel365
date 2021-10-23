@@ -34,13 +34,17 @@ var params = {
     },
 
     //primary field that will be used to create TestCases Shells
-    standardShellField : "TestCaseId",
+    standardShellField: "TestCaseId",
     //secondary field that will be used to create TestRun Shells
-    secondaryShellField : "TestSetId",
+    secondaryShellField: "TestSetId",
     //primary key field to associate Incidents and Test Runs
     standardAssociationField: "TestStepId",
     //secondary key field to associate Incidents and Test Runs
     secondaryAssociationField: "TestRunStepId",
+    //field that contains the Id of the standard created artifact
+    standardResultField: "TestRunId",
+    //field that contains the Id of the secondary created artifact
+    secondaryResultField: "IncidentId",
     // enums for different types of field - match custom field prop types where relevant
     fieldType: {
         text: 1,
@@ -121,7 +125,7 @@ var params = {
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system
 var templateFields = {
     testRuns: [
-        { field: "TestCaseId", name: "Case ID", type: params.fieldType.id},
+        { field: "TestCaseId", name: "Case ID", type: params.fieldType.id },
         { field: "TestStepId", name: "Step ID", type: params.fieldType.subId, isSubTypeField: true },
         { field: "Name", name: "Test Case Name", type: params.fieldType.text, isReadOnly: true },
         { field: "ReleaseId", name: "Release", type: params.fieldType.release },
@@ -129,7 +133,7 @@ var templateFields = {
         { field: "TestSetTestCaseId", name: "Set Case Unique ID", type: params.fieldType.id },
         { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC", extraIncDesc: true },
         { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true, extraIncDesc: true },
-        { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true},
+        { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true },
         {
             field: "ExecutionStatusId", name: "Execution Status", type: params.fieldType.drop, isSubTypeField: true, sendField: true,
             values: [
@@ -141,7 +145,7 @@ var templateFields = {
                 { id: 6, name: "Caution" }
             ]
         },
-        { field: "ActualResult", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true, extraIncDesc: true},
+        { field: "ActualResult", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true, extraIncDesc: true },
         { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, sendField: true, extraArtifact: true },
         { field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.text, isReadOnly: true, isHidden: true, },
         { field: "BuildId", name: "BuildId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
