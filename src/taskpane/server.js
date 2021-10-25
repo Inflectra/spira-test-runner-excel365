@@ -1151,18 +1151,6 @@ function setNumberValidation(sheet, columnNumber, rowLength, allowInvalid) {
 // @param: allowInvalid - bool to state whether to restrict any values to those in validation or not
 function setTextValidation(sheet, columnNumber, rowLength, allowInvalid) {
   if (IS_GOOGLE) {
-    //TO-DO
-    // var range = sheet.getRange(2, columnNumber, rowLength);
-
-    // // create the validation rule
-    // //must be a valid number greater than -1 (also excludes 1.1.0 style numbers)
-    // var rule = SpreadsheetApp.newDataValidation()
-    //   .requireNumberGreaterThan(0)
-    //   .setAllowInvalid(allowInvalid)
-    //   .setHelpText('Must be a text string')
-    //   .build();
-    // range.setDataValidation(rule);
-
   } else {
     var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
     range.dataValidation.clear();
@@ -1797,9 +1785,7 @@ function getAssociationFromResponse(response) {
 
 // 5. SET MESSAGES AND FORMATTING ON SHEET
 function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
-  var bgColors = [],
-    notes = [],
-    values = [];
+
   var extraFieldCounter = 0;
   var row = 0;
   var entriesCounter = 0;
@@ -2702,78 +2688,6 @@ function convertUTCtoLocal(originalDate) {
   return utcDate.toISOString();
 }
 
-// function creates a correctly formatted artifact object ready to send to Spira
-// it works through each field type to validate and parse the values so object is in correct form
-// any field that does not pass validation receives a null value
-// @param: row - a 'row' of data that contains a single object representing all fields
-// @param: model - full model with info about fields, dropdowns, users, etc
-// @param: fieldTypeEnums - object of all field types with enums
-// @param: originId - the ID of the artifact that originated this association
-function createAssociationEntryFromRow(row, model, fieldTypeEnums, originId) {
-
-  var fields = model.fields,
-    finalEntry = [],
-    sourceId, sourceTypeId,
-    destTypeId = [],
-    destId = [];
-
-  //Starting get the data from the row
-  sourceTypeId = model.currentArtifact.id;
-
-  //get all the data we need from each row
-  for (var index = 0; index < row.length; index++) {
-
-    destTypeId = [];
-    destId = [];
-    if (fields[index].type == fieldTypeEnums.id) {
-      sourceId = row[index]
-    }
-
-    if (row[index] && fields[index].association) {
-      var associationType = fields[index].association;
-
-      //depending on the user's language, the console can misinterpret commas as points - this fixes it
-      var associationText = (row[index] + '').replace('.', ',');
-      //removing spaces from the inputs, since it can cause errors
-      associationText = associationText.replace(/\s/g, '');
-      var associationIds = (associationText).split(',');
-      //work every chunk of data
-      associationIds.forEach(function (item) {
-        if (associationType == params.associationEnums.req2req) { destTypeId.push(params.artifactEnums.requirements); }
-        destId.push(item);
-      });
-
-      //build the entry object (return object)
-      destId.forEach(function entryBuilder(item, pos) {
-        var singleEntry = {};
-        if (sourceId) {
-          if (associationType == params.associationEnums.req2req) { singleEntry.SourceArtifactId = sourceId; }
-          if (associationType == params.associationEnums.tc2req || associationType == params.associationEnums.tc2rel) { singleEntry.TestCaseId = sourceId; }
-          if (associationType == params.associationEnums.tc2ts) { singleEntry.TestSetTestCaseId = sourceId; }
-        }
-        else if (originId) { //if we just created this artifact, its ID is not in the spreadsheet yet
-          if (associationType == params.associationEnums.req2req) { singleEntry.SourceArtifactId = originId; }
-          if (associationType == params.associationEnums.tc2req || associationType == params.associationEnums.tc2rel) { singleEntry.TestCaseId = originId; }
-          if (associationType == params.associationEnums.tc2ts) { singleEntry.TestSetTestCaseId = originId; }
-        }
-        if (associationType == params.associationEnums.req2req) {
-          singleEntry.SourceArtifactTypeId = sourceTypeId;
-          singleEntry.DestArtifactId = Number(item);
-          singleEntry.DestArtifactTypeId = destTypeId[pos];
-          //association is always "related to"
-          singleEntry.ArtifactLinkTypeId = Number("1");
-        } else if (associationType == params.associationEnums.tc2req) { singleEntry.RequirementId = Number(item); }
-        else if (associationType == params.associationEnums.tc2rel) { singleEntry.ReleaseId = Number(item); }
-        else if (associationType == params.associationEnums.tc2ts) { singleEntry.TestSetId = Number(item); }
-
-        //append to the export array
-        finalEntry.push(singleEntry);
-      });
-    }
-  }
-  return finalEntry;
-}
-
 // find the corresponding ID for a string value - eg from a dropdown
 // dropdowns can only contain one item per row so we have to now get the IDs for sending to Spira
 // @param: string - the string of the name value specified
@@ -2824,36 +2738,6 @@ function getIdFieldName(fields, fieldTypeEnums, getSubType) {
     }
   }
   return null;
-}
-
-
-// returns the count of the number of indent characters and returns the value
-// @param: field - a single field string - one already designated as containing hierarchy info
-// @param: indentCharacter - the character used to denote an indent - e.g. ">"
-function countIndentCharacters(field, indentCharacter) {
-  var indentCount = 0,
-    trimCount = 0;
-  //check for field value and indent character
-  if (field && field[0] === indentCharacter) {
-    //increment indent counter while there are '>'s present
-    while (field[0] === indentCharacter || field[0] === " ") {
-      // in all cases as to the trim count
-      trimCount++;
-      // add to the indent count if we have an indent character
-      if (field[0] === indentCharacter) {
-        indentCount++;
-      }
-
-      //get entry length for slice
-      var len = field.length;
-      //slice the first character off of the entry
-      field = field.slice(1, len);
-    }
-  }
-  return {
-    indentCount: indentCount,
-    trimCount: trimCount
-  };
 }
 
 

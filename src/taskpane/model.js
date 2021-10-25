@@ -32,7 +32,6 @@ var params = {
         testSets: 8,
         risks: 14
     },
-
     //primary field that will be used to create TestCases Shells
     standardShellField: "TestCaseId",
     //secondary field that will be used to create TestRun Shells
@@ -63,43 +62,16 @@ var params = {
         arr: 13, // used for comma separated lists in a single cell (eg linked Ids)
         folder: 14 // don't think in reality this will be need
     },
-
-    //enums for association between artifact types we handle in the add-in
-    associationEnums: {
-        req2req: 1,
-        tc2req: 2,
-        tc2rel: 3,
-        tc2ts: 4
-    },
-
-    apiCommandModesEnums: {
-        get: 1,
-        post: 2,
-        put: 3
-    },
-
     // enums and various metadata for all artifacts potentially used by the system
     artifacts: [
-        // { field: 'requirements', name: 'Requirements', id: 1, hierarchical: true },
-        // { field: 'testCases', name: 'Test Cases', id: 2, hasFolders: true, hasSubType: true, subTypeId: 7, subTypeName: "TestSteps" },
-        //{ field: 'incidents', name: 'Incidents', id: 3, mode: [params.apiCommandModesEnums.post]},
-        // { field: 'releases', name: 'Releases', id: 4, hierarchical: true },
         {
             field: 'testRuns', name: 'Test Runs', id: 5, conditionField: "IsTestSteps", hasSubType: true, subTypeId: 7,
             subTypeName: "TestSteps", hasSecondaryType: true, SecondaryTypeId: 8, SecondaryTypeField: "TestSetId", secondaryConditionField: "TestRunTypeId",
             secondaryConditionValue: 1, hasSecondaryTarget: true, secondaryTargetId: 2, SecondaryTargetFieldName: "TestCaseId",
             associationField: "TestSetTestCaseId", hasExtraField: true, extraFieldName: "ReleaseId"
-        },
-        // { field: 'tasks', name: 'Tasks', id: 6, hasFolders: true },
-        //{ field: 'testSteps', name: 'Test Steps', id: 7, disabled: true, hidden: true, isSubType: true },
-        //{ field: 'testSets', name: 'Test Sets', id: 8, hasFolders: true },
-        // { field: 'risks', name: 'Risks', id: 14 }
+        }
     ],
-    //special cases enum
-    specialCases: [
-        { artifactId: 2, parameter: 'TestStepId', field: 'Description', target: "Call TC:" }
-    ],
-    //extra TC fixed fields (that are not retrieved from Spira) to send to the server
+    //extra TC fixed fields (that are not retrieved from Spira, but needed to send to the server)
     extraTcFixedFields: {
         TestRunTypeId: 1,
         StartDate: (function () {
@@ -155,59 +127,7 @@ var templateFields = {
         { field: "Tags", name: "Tags", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "Position", name: "Position", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true },
         { field: "ConcurrencyDate", name: "ConcurrencyDate", type: params.fieldType.text, isReadOnly: true, isHidden: true }
-    ],
-
-    // risks: [
-    //     { field: "RiskId", name: "ID", type: params.fieldType.id },
-    //     { field: "Name", name: "Name", type: params.fieldType.text, required: true },
-    //     { field: "Description", name: "Description", type: params.fieldType.text },
-    //     { field: "ReleaseId", name: "Release", type: params.fieldType.release },
-    //     {
-    //         field: "RiskTypeId", name: "Type", type: params.fieldType.drop, required: true,
-    //         bespoke: {
-    //             url: "/risks/types",
-    //             idField: "RiskTypeId",
-    //             nameField: "Name",
-    //             isActive: "IsActive"
-    //         }
-    //     },
-    //     {
-    //         field: "RiskProbabilityId", name: "Probability", type: params.fieldType.drop,
-    //         bespoke: {
-    //             url: "/risks/probabilities",
-    //             idField: "RiskProbabilityId",
-    //             nameField: "Name",
-    //             isActive: "Active"
-    //         }
-    //     },
-    //     {
-    //         field: "RiskImpactId", name: "Impact", type: params.fieldType.drop,
-    //         bespoke: {
-    //             url: "/risks/impacts",
-    //             idField: "RiskImpactId",
-    //             nameField: "Name",
-    //             isActive: "Active"
-    //         }
-    //     },
-    //     {
-    //         field: "RiskStatusId", name: "Status", type: params.fieldType.drop, required: true,
-    //         bespoke: {
-    //             url: "/risks/statuses",
-    //             idField: "RiskStatusId",
-    //             nameField: "Name",
-    //             isActive: "Active"
-    //         }
-    //     },
-    //     { field: "CreatorId", name: "Creator", type: params.fieldType.user, required: true },
-    //     { field: "OwnerId", name: "Owner", type: params.fieldType.user },
-    //     { field: "ComponentId", name: "Component", type: params.fieldType.component },
-    //     { field: "CreationDate", name: "Creation Date", type: params.fieldType.date, isReadOnly: true, isHidden: true},
-    //     { field: "ClosedDate", name: "Closed Date", type: params.fieldType.date },
-    //     { field: "ReviewDate", name: "Review Date", type: params.fieldType.date },
-    //     { field: "RiskExposure", name: "Risk Exposure", type: params.fieldType.int, isReadOnly: true, isHidden: true },
-    //     { field: "Text", name: "New Comment", type: params.fieldType.text, isComment: true, isAdvanced: true },
-    //     { field: "ConcurrencyDate", name: "Concurrency Date", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-    // ],
+    ]
 };
 
 function Data() {
@@ -216,10 +136,7 @@ function Data() {
         url: '',
         userName: '',
         api_key: '',
-        roleId: 1,
-        //TODO this is wrong and should eventually be fixed to limit what user can create or edit client side
-        //when add permissions - show in some way to the user what is going on
-        // maybe it's as simple as a footnote explaining why projects or artifacts are disabled
+        roleId: 1
     };
 
     this.projects = [];

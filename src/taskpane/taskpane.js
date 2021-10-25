@@ -130,16 +130,7 @@ function setEventListeners() {
     showChosenHelpSection('login');
   };
   document.getElementById("btn-dev").onclick = setAuthDetails;
-  document.getElementById("chkAdvanced").onclick = setAdvancedMode;
 
-
-  document.getElementById("lnk-help-decide").onclick = function () {
-    panelToggle('help');
-    showChosenHelpSection('getting')
-  };
-  document.getElementById("btn-decide-send").onclick = function () { showMainPanel("send") };
-  document.getElementById("btn-decide-get").onclick = function () { showMainPanel("get") };
-  document.getElementById("btn-decide-logout").onclick = logoutAttempt;
   document.getElementById("btn-help-main").onclick = function () {
     panelToggle('help');
     showChosenHelpSection('data')
@@ -354,19 +345,9 @@ function setAuthDetails() {
 }
 
 
-// switches the value of the global variable for the Advanced Mode
-function setAdvancedMode() {
-  if (document.getElementById('chkAdvanced').checked) {
-    advancedMode = true;
-  } else {
-    advancedMode = false;
-  }
-}
-
 // handle the click of the login button
 function loginAttempt() {
   if (!devMode) getAuthDetails();
-  document.getElementById('panel-decide').classList.add('offscreen');
   login();
 }
 
@@ -407,10 +388,6 @@ function populateProjects(projects) {
 
   // now add paired down project array to data store
   model.projects = pairedDownProjectsData;
-
-  // sets the display current logged in user name
-  document.getElementById("js--loggedInAs-decision").innerHTML = "Logged in as: " + model.user.userName;
-  document.getElementById("js--loggedInAs-main").innerHTML = "Logged in as: " + model.user.userName;
 
   // get UI logic ready for decision panel
   showMainPanel('run');
