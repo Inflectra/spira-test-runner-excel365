@@ -14,8 +14,8 @@
   <Description DefaultValue="Get and send information with your SpiraTest/Team/Plan application"/>
   
   <!-- Used on installation screens and the add-ins dialog. -->
-  <IconUrl DefaultValue="https://files.inflectra.com/office365/excel2/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://files.inflectra.com/office365/excel2/assets/icon-80.png"/>
+  <IconUrl DefaultValue="https://files.inflectra.com/office365/TestRunner/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://files.inflectra.com/office365/TestRunner/assets/icon-80.png"/>
   
   <SupportUrl DefaultValue="http://spiradoc.inflectra.com/Migration-and-Integration/Importing-from-Microsoft-Excel-(Office365)/"/>
 
@@ -93,9 +93,9 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://files.inflectra.com/office365/excel2/assets/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://files.inflectra.com/office365/excel2/assets/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://files.inflectra.com/office365/excel2/assets/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://files.inflectra.com/office365/TestRunner/assets/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://files.inflectra.com/office365/TestRunner/assets/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://files.inflectra.com/office365/TestRunner/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://go.microsoft.com/fwlink/?LinkId=276812"/>

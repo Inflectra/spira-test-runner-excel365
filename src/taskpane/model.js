@@ -32,18 +32,26 @@ var params = {
         testSets: 8,
         risks: 14
     },
-    //primary field that will be used to create TestCases Shells
-    standardShellField: "TestCaseId",
-    //secondary field that will be used to create TestRun Shells
-    secondaryShellField: "TestSetId",
-    //primary key field to associate Incidents and Test Runs
-    standardAssociationField: "TestStepId",
-    //secondary key field to associate Incidents and Test Runs
-    secondaryAssociationField: "TestRunStepId",
-    //field that contains the Id of the standard created artifact
-    standardResultField: "TestRunId",
-    //field that contains the Id of the secondary created artifact
-    secondaryResultField: "IncidentId",
+    specialFields : {
+        //primary field that will be used to create TestCases Shells
+        standardShellField: "TestCaseId",
+        //secondary field that will be used to create TestRun Shells
+        secondaryShellField: "TestSetId",
+        //primary key field to associate Incidents and Test Runs
+        standardAssociationField: "TestStepId",
+        //secondary key field to associate Incidents and Test Runs
+        secondaryAssociationField: "TestRunStepId",
+        //field that contains the Id of the standard created artifact
+        standardResultField: "TestRunId",
+        //field that contains the Id of the secondary created artifact
+        secondaryResultField: "IncidentId",
+        //field used in the Get Las Status check-box
+        executionStatusField: "ExecutionStatusId",
+        //standard NotRun statusID
+        standardNotRunId: 3,
+        //TestRunSteps field
+        testRunStepsField: "TestRunSteps"
+    },
     // enums for different types of field - match custom field prop types where relevant
     fieldType: {
         text: 1,
@@ -76,49 +84,51 @@ var params = {
         TestRunTypeId: 1,
         StartDate: (function () {
             return new Date(Date.now()).toISOString();
-        })(),
-        EndDate: (function () {
-            var dateOffset = new Date(Date.now()).getTime() + 1 * 60000;
-            return new Date(dateOffset).toISOString();
-        })(),
+        }) (),
+    EndDate: (function () {
+        var dateOffset = new Date(Date.now()).getTime() + 1 * 60000;
+        return new Date(dateOffset).toISOString();
+    })(),
         ArtifactTypeId: 5
     },
-    extraTsFixedFields: {
-        StartDate: (function () {
-            return new Date(Date.now()).toISOString();
-        })(),
+extraTsFixedFields: {
+    StartDate: (function () {
+        return new Date(Date.now()).toISOString();
+    })(),
         EndDate: (function () {
             var dateOffset = new Date(Date.now()).getTime() + 1000;
             return new Date(dateOffset).toISOString();
         })(),
     },
+//documentation URL to be used in error messages
+documentationURL: "https://spiradoc.inflectra.com/"
 };
 
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system
 var templateFields = {
     testRuns: [
-        { field: "TestCaseId", name: "Case ID", type: params.fieldType.id },
-        { field: "TestStepId", name: "Step ID", type: params.fieldType.subId, isSubTypeField: true },
+        { field: "TestCaseId", name: "Test Case ID", type: params.fieldType.id },
+        { field: "TestStepId", name: "Test Step ID", type: params.fieldType.subId, isSubTypeField: true },
+        { field: "TestSetId", name: "Test Set ID", type: params.fieldType.id, shellField: true },
         { field: "Name", name: "Test Case Name", type: params.fieldType.text, isReadOnly: true },
-        { field: "ReleaseId", name: "Release", type: params.fieldType.release },
-        { field: "TestSetId", name: "Set ID", type: params.fieldType.id, shellField: true },
-        { field: "TestSetTestCaseId", name: "Set Case Unique ID", type: params.fieldType.id },
+        { field: "ReleaseId", name: "Release", type: params.fieldType.release, sendField: true },
+        { field: "TestSetTestCaseId", name: "Set Case Unique ID", type: params.fieldType.id, isHidden: true },
         { field: "Description", name: "Test Step Description", type: params.fieldType.text, isSubTypeField: true, extraDataField: "LinkedTestCaseId", extraDataPrefix: "TC", extraIncDesc: true },
         { field: "ExpectedResult", name: "Test Step Expected Result", type: params.fieldType.text, isSubTypeField: true, extraIncDesc: true },
         { field: "SampleData", name: "Test Step Sample Data", type: params.fieldType.text, isSubTypeField: true },
         {
             field: "ExecutionStatusId", name: "Execution Status", type: params.fieldType.drop, isSubTypeField: true, sendField: true,
             values: [
-                { id: 1, name: "Failed" },
+                { id: 1, name: "Failed", isFailedStatus: true },
                 { id: 2, name: "Passed" },
                 { id: 3, name: "Not Run" },
                 { id: 4, name: "Not Applicable" },
-                { id: 5, name: "Blocked" },
-                { id: 6, name: "Caution" }
+                { id: 5, name: "Blocked", isFailedStatus: true },
+                { id: 6, name: "Caution", isFailedStatus: true }
             ]
         },
         { field: "ActualResult", name: "Actual Result", type: params.fieldType.text, isSubTypeField: true, sendField: true, extraIncDesc: true },
-        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, sendField: true, extraArtifact: true },
+        { field: "Incident Name", name: "Incident Name", type: params.fieldType.text, isSubTypeField: true, extraArtifact: true },
         { field: "ExecutionStatusId", name: "ExecutionStatusId", type: params.fieldType.text, isReadOnly: true, isHidden: true, },
         { field: "BuildId", name: "BuildId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "EstimatedDuration", name: "EstimatedDuration", type: params.fieldType.text, isReadOnly: true, isHidden: true },
@@ -167,7 +177,9 @@ function Data() {
         bgRunField: '#c0fcd6',
         header: '#ffffff',
         headerRequired: '#000000',
-        warning: '#ffcccc'
+        warning: '#ffcccc',
+        cellBorder: '#D9D9D9',
+        bgOriginal: '#ffffff'
     };
 
     this.isTemplateLoaded = false;

@@ -14,6 +14,9 @@ var uiSelection = new tempDataStore();
 var devMode = true;
 var isGoogle = false;
 
+//global flag for the Get Last TS run status check box
+var lastStatusMode = false;
+
 /*
 Global Variable to control if advanced options should be enabled to the user
 Up to know, the advanced features are :
@@ -152,9 +155,17 @@ function setEventListeners() {
   document.getElementById("btn-help-section-login").onclick = function () { showChosenHelpSection('login') };
   document.getElementById("btn-help-section-getting").onclick = function () { showChosenHelpSection('getting') };
   document.getElementById("btn-help-section-sending").onclick = function () { showChosenHelpSection('sending') };
+  document.getElementById("chkLastStatus").onclick = setLastStatus;
 }
 
-
+// switches the value of the global variable for the Advanced Mode
+function setLastStatus() {
+  if (document.getElementById('chkLastStatus').checked) {
+    lastStatusMode = true;
+  } else {
+    lastStatusMode = false;
+  }
+}
 
 // used to show or hide / hide / show a specific panel
 // @param: panel - string. suffix for items to act on (eg if id = panel-help, choice = "help")
@@ -627,15 +638,18 @@ function manageTemplateBtnState() {
           document.getElementById("btn-fromSpira").disabled = false;
           document.getElementById("main-guide-2").classList.add("pale");
           document.getElementById("main-guide-3").classList.remove("pale");
+          document.getElementById("checkboxStatus").classList.add("pale");
           document.getElementById("message-fetching-data").style.visibility = "hidden";
         }
         else {
           document.getElementById("btn-toSpira").disabled = false;
           document.getElementById("btn-fromSpira").disabled = false;
-
+          
           document.getElementById("message-fetching-data").style.visibility = "hidden";
           document.getElementById("main-guide-1").classList.add("pale");
           document.getElementById("main-guide-2").classList.remove("pale");
+          document.getElementById("checkboxStatus").classList.remove("pale");
+          document.querySelector(".circleHelp").classList.add("checked");
         }
 
         clearInterval(checkGetsSuccess);
@@ -712,7 +726,7 @@ function getFromSpiraAttempt() {
         .withSuccessHandler(getFromSpiraComplete)
         .getFromSpiraGoogle(model, params.fieldType);
     } else {
-      msOffice.getFromSpiraExcel(model, params.fieldType)
+      msOffice.getFromSpiraExcel(model, params.fieldType, lastStatusMode)
         .then((response) => getFromSpiraComplete(response))
         .catch((error) => errorImpExp(error));
     }

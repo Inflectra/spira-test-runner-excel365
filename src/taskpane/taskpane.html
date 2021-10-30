@@ -29,7 +29,7 @@
     <!-- appscript: and the entire document will be bundled together with inline CSS and JavaScript on deployment -->
 
     <header class="header">
-        <img src="https://files.inflectra.com/google/sheets/spiraplan-icon.svg" class="header-logo">
+        <img src="https://files.inflectra.com/office365/TestRunner/assets/icon-32.png" class="header-logo">
         <h3 class="header-heading">SpiraPlan Test Runner Tool</h3>
     </header>
 
@@ -140,8 +140,6 @@
             </button>
         </div>
 
-
-
         <div>
             <p id="main-guide-2" class="pale">
                 b. Start the data transfer with Spira
@@ -154,6 +152,17 @@
                 title="Get data for the specified artifact from SpiraPlan">
                 Get from Spira
             </button>
+        </div>
+
+        <div class="mt-md pale" id="checkboxStatus">
+
+            <input type="checkbox" id="chkLastStatus" name="chkLastStatusMain" checked>
+            <label for="chkLastStatusMain" id='chkLastStatusMain'> Get Last Execution Status </label>
+            <div class="circleHelp">
+                <p>?</p>
+            </div>
+            <div class="helpBox">This option allows you to see the last Execution Status of each Test Step in the
+                spreadsheet.</div>
         </div>
 
         <div>
@@ -231,7 +240,9 @@
                 </li>
                 <li>
                     <p><b>Enter your RSS token</b></p>
-                    <small>You can find or generate this from your user profile page inside Spira - <a href="http://spiradoc.inflectra.com/HowTo-Guides/Users-profile-management/#how-to-get-or-make-your-rss-token-or-api-key">read how to do so here</a>. Make sure to include
+                    <small>You can find or generate this from your user profile page inside Spira - <a
+                            href="http://spiradoc.inflectra.com/HowTo-Guides/Users-profile-management/#how-to-get-or-make-your-rss-token-or-api-key">read
+                            how to do so here</a>. Make sure to include
                         the curly braces - {ExampleRSS}</small>
                 </li>
             </ol>
@@ -242,15 +253,24 @@
 
         <div id="help-section-getting" class="help-section hidden">
             <h4>2. Getting data from Spira</h4>
-            <p>You can use this add-in to execute test cases while disconnected from your network and then upload the results to SpiraTeam as a single batch.</p>
-            <p>First, you'll need to get the Test Cases/Test Sets assigned to you from Spira. After providing your credentials, please select a product to retrieve the data from, then 
-                click on 'Get from Spira'. You should see the Test Cases and their Test Steps on the Spreadsheet. Please note that the spreadsheet contains only Test Cases
-                with Test Steps and Test Sets type 'Manual' assigned to you. The spreadsheet template has a few different columns:</p>
+            <p>You can use this add-in to execute test cases while disconnected from your network and then upload the
+                results to SpiraTeam as a single batch.</p>
+            <p>First, you'll need to get the Test Cases/Test Sets assigned to you from Spira. Start providing your
+                credentials,
+                then optionally check the box 'Get Last Execution Status', which
+                will populate the column 'Execution Status' of each Test Step with its last Test Run status.</p>
+            <p>Then, select a product to retrieve the data from and
+                click on 'Get from Spira'. You should see the Test Cases and their Test Steps on the Spreadsheet. Please
+                note that the spreadsheet contains only Test Cases
+                with Test Steps and Test Sets type 'Manual' assigned to you. The spreadsheet template has a few
+                different columns:</p>
+            </p>
             <ul class="list">
                 <li>
                     <p>
                         <b>Case ID and Step ID: </b>
-                        <small>Respectively, the IDs of the Test Case and the Test Step in Spira. You can't edit this field.</small>
+                        <small>Respectively, the IDs of the Test Case and the Test Step in Spira. You can't edit this
+                            field.</small>
                     </p>
                 </li>
                 <li>
@@ -268,39 +288,47 @@
                 <li>
                     <p>
                         <b>Set ID: </b>
-                        <small>If the Test Case came from a Test Step assigned to you, you should see its ID in this field. Otherwise, it will remain blank.</small>                        
+                        <small>If the Test Case came from a Test Step assigned to you, you should see its ID in this
+                            field. Otherwise, it will remain blank.</small>
                     </p>
                 </li>
                 <li>
                     <p>
                         <b>Set Case Unique ID: </b>
-                        <small>This is the Test-Set, Test Case unique ID i.e.: the ID of the Test Case inside a Test Set in Spira.</small>
+                        <small>This is the Test-Set, Test Case unique ID i.e.: the ID of the Test Case inside a Test Set
+                            in Spira.</small>
                     </p>
                 </li>
                 <li>
                     <p>
                         <b>Test Step Description/Test Step Expected Result/Test Step Sample Data: </b>
-                        <small>This field brings the text description/expected result/sample data of the Test Step in Spira.</small>
+                        <small>This field brings the text description/expected result/sample data of the Test Step in
+                            Spira.</small>
                     </p>
                 </li>
                 <li>
                     <p>
                         <b>Execution Status: </b>
-                        <small>The execution status of that test step. It should be selected drop the dropdown list. This field will be sent to Spira. </small>
+                        <small>The execution status of that test step. It should be selected drop the dropdown list.
+                            This field will be sent to Spira. </small>
                     </p>
                 </li>
 
                 <li>
                     <p>
                         <b>Actual Result: </b>
-                        <small>The long description of the actual result experienced during testing. If you want it formatted, you need to add HTML tags such as &lt;b&gt; for bold. This field will be sent to Spira.</small>
+                        <small>The long description of the actual result experienced during testing. If you want it
+                            formatted, you need to add HTML tags such as &lt;b&gt; for bold. This field will be sent to
+                            Spira.</small>
                     </p>
                 </li>
 
                 <li>
                     <p>
                         <b>Incident Name: </b>
-                        <small>If you want to log an incident associated with the test failure, enter the name of the incident here. The description of the incident will be pre-populated with the Test Step Description, Expected Result, and Actual Result.</small>
+                        <small>If you want to log an incident associated with the test failure, enter the name of the
+                            incident here. The description of the incident will be pre-populated with the Test Step
+                            Description, Expected Result, and Actual Result.</small>
                     </p>
                 </li>
             </ul>
@@ -309,8 +337,10 @@
         <div id="help-section-sending" class="help-section hidden">
             <h4>3. Send the data back to Spira</h4>
 
-            <p>Once you have finished testing and populating the green fields of the spreadsheet, make sure you are connected on the network, then 
-                click on the 'Send to Spira' button to have the Add-In connect with SpiraTeam and upload the results to the server.</p>
+            <p>Once you have finished testing and populating the green fields of the spreadsheet, make sure you are
+                connected on the network, then
+                click on the 'Send to Spira' button to have the Add-In connect with SpiraTeam and upload the results to
+                the server.</p>
         </div>
     </div>
 
