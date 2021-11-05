@@ -68,7 +68,8 @@ var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
     allError: 3,
     wrongSheet: 4,
     existingEntries: 5,
-    noData: 6
+    noData: 6,
+    preCheckingError: 7,
   },
   SUBTYPE_IDS = ["TestCaseId", "TestStepId"],
   STATUS_MESSAGE_GOOGLE = {
@@ -84,7 +85,8 @@ var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
     3: "We're really sorry, but we couldn't send anything to SpiraPlan - please check notes on the ID fields for more information.",
     4: "You are not on the correct worksheet. Please go to the sheet that matches the one listed on the Spira taskpane / the selection you made in the sidebar.",
     5: "Some/all of the rows already exist in SpiraPlan. These rows have not been re-added.",
-    6: "It seems you are not the owner of any Test Case and/or Test Set in this product. Please select another product or check the current one in Spira and try again."
+    6: "It seems you are not the owner of any Test Case/Test Set in this product or all the artifacts assigned to you have the status 'Passed'. Please select another product or check the current one in Spira and try again.",
+    7: "The entered data is missing required fields and/or has invalid execution statuses. Please check notes on the ID fields for more information or refer to the <a href=\"" + params.documentationURL + "\">documentation</a>."
   },
   CUSTOM_PROP_TYPE_ENUM = {
     1: "StringValue",
@@ -594,7 +596,7 @@ function error(type, err) {
   var message = "",
     details = "";
   if (type == 'impExp') {
-    message = 'There was an input error. Please check that your entries are correct.';
+    message = 'There was an input error. Please check your network connection and make sure your Spira user can view and create Test Sets, Test Cases, Test Steps, and Test Runs. For further  information, please refer to the <a href=\"' + params.documentationURL + '\">documentation</a>.'; 
   } else if (type == "network") {
     message = 'Network error. Please check your username, url, and password. If correct make sure you have the correct permissions.';
     details = err ? `<br><br>STATUS: ${err.status ? err.status : "unknown"}<br>MESSAGE: ${err.response ? err.response.text : "unknown"}` : "";
@@ -1464,9 +1466,48 @@ function clearErrorMessages(sheetData) {
       if (!sheetData[rowToPrep][0]) {
         sheetData[rowToPrep][0] = "-1";
       }
+
     }
   }
   return sheetData;
+}
+
+//Function that clear all the comments from the inicitial ID columns in the Spreadsheet
+//@param model - contains information related to the artifact we are working with
+async function resetComments(model, sheetData, context) {
+  // await Excel.run(async (ctx) => {
+  var fields = model.fields;
+  var sheet = context.workbook.worksheets.getActiveWorksheet();
+  var comments = context.workbook.comments;
+
+  for (var rowToPrep = 0; rowToPrep < sheetData.length; rowToPrep++) {
+    // stop at the first row that is fully blank
+    if (sheetData[rowToPrep].join("") === "") {
+      break;
+    } else {
+
+      //remove any comments from previous interactions
+      for (var col = 0; col < fields.length; col++) {
+        if (col == 0 || col == 1) {
+          //only from the ID field
+          var cellRange = sheet.getCell(rowToPrep + 1, col);
+          //reset color to its original value
+          cellRange.set({ format: { fill: { color: model.colors.bgReadOnly } } });
+          //exclude any comment
+          try {
+            var comment = comments.getItemByCell(cellRange);
+            comment.delete();
+            await context.sync();
+          }
+          catch (err) {
+            //if there's no comment, do nothing
+          }
+        }
+      }
+    }
+  }
+  // });
+  //return context.sync();
 }
 
 
@@ -1487,18 +1528,19 @@ function clearErrorMessages(sheetData) {
 // @param: isUpdate - boolean that indicates if this is an update operation (true) or create operation (false)
 async function sendToSpira(model, fieldTypeEnums) {
 
-  // 0. SETUP FUNCTION LEVEL VARS
-
+  // 0. SETUP FUNCTION LEVEL VARS 
   var entriesLog, extraEntriesLog;
 
   var fields = model.fields,
     artifact = model.currentArtifact,
-    requiredSheetName = model.currentArtifact.name + ", PR-" + model.currentProject.id
+    requiredSheetName = model.currentArtifact.name + ", PR-" + model.currentProject.id;
+
 
   // 1. get the active spreadsheet and first sheet
   if (IS_GOOGLE) {
     //to do
   } else {
+
     return await Excel.run({ delayForCellEdit: true }, function (context) {
       var sheet = context.workbook.worksheets.getActiveWorksheet(),
         sheetRange = sheet.getRangeByIndexes(1, 0, EXCEL_MAX_ROWS, fields.length);
@@ -1510,30 +1552,40 @@ async function sendToSpira(model, fieldTypeEnums) {
           .then(function () {
             if (sheet.name == requiredSheetName) {
               var sheetData = sheetRange.values;
-              //Clear error messages from the ID fields, if any
-              sheetData = clearErrorMessages(sheetData);
-              //First, send the artifact entries for Spira
-              var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
 
-              //Check if the data can actually be sent to Spira
-              var checkLog = preCheckData(entriesForExport, model);
+              //clear all the comments from possible last executions
+              resetComments(model, sheetData, context).then(function () {
 
-              var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
-              // console.log('extraEntriesForExport');
-              // console.log(extraEntriesForExport);
+                //Clear error messages and comments from the fields, if any
+                sheetData = clearErrorMessages(sheetData);
+                //First, send the artifact entries for Spira
+                var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
 
-              return sendExportEntriesExcel(entriesForExport, '', model, fieldTypeEnums, fields, artifact, '').then(function (response) {
-                entriesLog = response;
-                //  console.log('entriesLog');
-                //  console.log(entriesLog);
-                return sendExportEntriesExcel('', extraEntriesForExport, model, fieldTypeEnums, fields, artifact, entriesLog.associations);
-              }).then(function (responseExtra) {
-                extraEntriesLog = responseExtra;
-              }).catch(function (err) {
-                reject()
-              }).finally(function () {
-                resolve(updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context))
-              })
+                //Check if the data can actually be sent to Spira
+                var preCheckLog = preCheckData(entriesForExport, model);
+
+                //only proceed if there's no data pre-validation errors
+                if (!preCheckLog.globalFailureStatus) {
+                  var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
+
+                  return sendExportEntriesExcel(entriesForExport, '', model, fieldTypeEnums, fields, artifact, '').then(function (response) {
+                    entriesLog = response;
+
+                    return sendExportEntriesExcel('', extraEntriesForExport, model, fieldTypeEnums, fields, artifact, entriesLog.associations);
+                  }).then(function (responseExtra) {
+                    extraEntriesLog = responseExtra;
+                  }).catch(function (err) {
+                    reject()
+                  }).finally(function () {
+                    resolve(updateSheetWithExportResults(entriesLog, extraEntriesLog, null, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context))
+                  })
+
+                }
+                else {
+                  //data pre-validation checks failed
+                  resolve(updateSheetWithExportResults(null, null, preCheckLog, entriesForExport, null, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context));
+                }
+              });
             }
             else {
               var log = {
@@ -1559,48 +1611,77 @@ async function sendToSpira(model, fieldTypeEnums) {
 */
 function preCheckData(entriesForExport, model) {
 
-  console.log('entriesForExport');
-  console.log(entriesForExport);
-  console.log('model');
-  console.log(model);
-  console.log('fields');
-  console.log(model.fields);
-
   var fields = model.fields;
-  var log = {};
-  var failedIds = [];
+  var log = {
+    globalFailureStatus: false,
+    artifacts: []
+  };
+  var failedIds = [],
+    notRunIds = [];
 
   // 1. Fist verification: Actual Result
   // every non-success status must have an actual result
 
-  //populating the failing array, based on model
+  //2. Second verification: Execution Status
+  //  In a Test Case, having a 'Not Run' exec. status is only acceptable
+  // when there's at leats one non-success Test Step
+
+  //populating the failingIds and notRunIds arrays, based on model
 
   fields.forEach(function (item) {
     if (item.field == params.specialFields.executionStatusField && !item.isHidden) {
-      console.log('item');
-      console.dir(item);
       //if we have the key execution statuses... 
       item.values.forEach(function (subItem) {
         //... get just the failing ones and include their Ids in the local array
-        if(subItem.isFailedStatus){
+        if (subItem.isFailedStatus) {
           failedIds.push(subItem.id);
+        }
+        else if (subItem.isNotRun) {
+          //... get the no-Runs as well
+          notRunIds.push(subItem.id);
         }
       });
     }
   });
 
-  //checking every Test Step entry
+  //checking every Test Case/ Test Step entry
 
-  entriesForExport.forEach(function (item, index) {  
-    item[params.specialFields.testRunStepsField].forEach(function (subItem, subIndex) {  
+  entriesForExport.forEach(function (item) {
+    //checking every Test Case:
+    //is there any 'Not Run' Test Step in it?
+    var isNoRun = false;
+    //is there any non-success Test Step in it?
+    var isFailure = false;
+
     //getting every Test Step
-    if (failedIds.includes(subItem[params.specialFields.executionStatusField])){
-      //if the Test Step failed....
-      //PAREI AQUI
-    }
+    item[params.specialFields.testRunStepsField].forEach(function (subItem) {
+      if (failedIds.includes(subItem[params.specialFields.executionStatusField])) {
+        //if the Test Step failed....
+        isFailure = true;
+
+        if (!subItem[params.specialFields.preCheckField1]) {
+          //and does not have an Actual Result, we must flag it! (1st ver.)
+          log.globalFailureStatus = true;
+          subItem.FailingCondition = params.preCheckEnums.actualResult;
+          log.artifacts.push(subItem);
+        }
+        else {
+          //do nothing, that's expected!
+        }
+      } else if (notRunIds.includes(subItem[params.specialFields.executionStatusField])) {
+        //flag if it is a non-run
+        isNoRun = true;
+      }
 
     });
-});
+    //if the Test Case is NoRun and non-failure status, we must flag it! (2nd ver.)
+
+    if (isNoRun && !isFailure) {
+      log.globalFailureStatus = true;
+      item.FailingCondition = params.preCheckEnums.executionStatus;
+      log.artifacts.push(item);
+    }
+  });
 
   return log;
 }
@@ -1845,7 +1926,7 @@ function getAssociationFromResponse(response) {
 
 
 // 5. SET MESSAGES AND FORMATTING ON SHEET
-function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
+function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
 
   var extraFieldCounter = 0;
   var row = 0;
@@ -1864,6 +1945,43 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExp
         associationNote = null,
         value = sheetData[row][col];
       var cellRange = sheet.getCell(row + 1, col);
+
+      //handling the pre-checking log
+      if (preCheckingLog != null) {
+        //checking if the TC failed
+        if (col == 0) {
+          preCheckingLog.artifacts.forEach(function (item) {
+            //if we had an execution status pre-checking failure, log it to the TC cell
+            if (item[params.specialFields.standardShellField] == value && item.FailingCondition == params.preCheckEnums.executionStatus) {
+              bgColor = model.colors.warning;
+              cellRange.set({ format: { fill: { color: bgColor } } });
+              bgColor = null;
+              var checkingFieldNote = 'This TestCase contains an invalid execution statuses combination. For further information, please refer to the documentation.';
+              var comments = context.workbook.comments;
+              comments.add(cellRange, 'Invalid Execution Statuses: ' + checkingFieldNote);
+            }
+          });
+
+
+        }
+        else if (col == 1) {
+          //checking if the TS failed
+          preCheckingLog.artifacts.forEach(function (item) {
+            //if we had an execution status pre-checking failure, log it to the TC cell
+            if (item[params.specialFields.standardAssociationField] == value && item.FailingCondition == params.preCheckEnums.actualResult) {
+              bgColor = model.colors.warning;
+              cellRange.set({ format: { fill: { color: bgColor } } });
+              bgColor = null;
+              var checkingFieldNote = 'This TestStep needs to have an Actual Result, since it failed.';
+              var comments = context.workbook.comments;
+              comments.add(cellRange, 'Missing Actual Result: ' + checkingFieldNote);
+            }
+          });
+        }
+        var returnLog = {
+          status: STATUS_ENUM.preCheckingError
+        };
+      }
 
       // we may have more rows than entries - because the entries can be stopped early (eg when an error is found on a hierarchical artifact)
       if (entriesLog != null) {
@@ -1923,6 +2041,7 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExp
         }
         cellRange.values = [[value]];
         value = null;
+        var returnLog = entriesLog;
       }
 
 
@@ -1934,7 +2053,7 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, entriesForExp
     }
     row++;
   }
-  return context.sync().then(function () { return entriesLog; });
+  return context.sync().then(function () { return returnLog; });
 }
 
 function checkSingleEntryForErrors(singleEntry, log, artifact) {
@@ -2864,7 +2983,6 @@ function processSendToSpiraResponse(i, sentToSpira, entriesForExport, artifact, 
 // @param: enum of fieldTypeEnums used
 function getFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
   return Excel.run(function (context) {
-    console.log('isLastStatusMode ' + isLastStatusMode);
     var fields = model.fields;
     var sheet = context.workbook.worksheets.getActiveWorksheet(),
       sheetRange = sheet.getRangeByIndexes(1, 0, EXCEL_MAX_ROWS, fields.length);

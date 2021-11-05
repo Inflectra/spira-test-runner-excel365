@@ -50,7 +50,13 @@ var params = {
         //standard NotRun statusID
         standardNotRunId: 3,
         //TestRunSteps field
-        testRunStepsField: "TestRunSteps"
+        testRunStepsField: "TestRunSteps",
+        preCheckField1: "ActualResult",
+    },
+    //enum for pre-checking data conditions
+    preCheckEnums: {
+        actualResult: 1,
+        executionStatus: 2
     },
     // enums for different types of field - match custom field prop types where relevant
     fieldType: {
@@ -121,7 +127,7 @@ var templateFields = {
             values: [
                 { id: 1, name: "Failed", isFailedStatus: true },
                 { id: 2, name: "Passed" },
-                { id: 3, name: "Not Run" },
+                { id: 3, name: "Not Run", isNotRun: true },
                 { id: 4, name: "Not Applicable" },
                 { id: 5, name: "Blocked", isFailedStatus: true },
                 { id: 6, name: "Caution", isFailedStatus: true }

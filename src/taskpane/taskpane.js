@@ -15,7 +15,7 @@ var devMode = true;
 var isGoogle = false;
 
 //global flag for the Get Last TS run status check box
-var lastStatusMode = false;
+var lastStatusMode = true;
 
 /*
 Global Variable to control if advanced options should be enabled to the user
@@ -113,9 +113,9 @@ Office.onReady(info => {
 function setDevStuff(devMode) {
   if (devMode) {
     document.getElementById("btn-dev").classList.remove("hidden");
-    model.user.url = "https://internal-bruno.spiraservice.net/";
+    model.user.url = "";
     model.user.userName = "administrator";
-    model.user.api_key = btoa("&api-key=" + encodeURIComponent("{88C10992-22A6-47FD-B570-8A87624A8CBA}"));
+    model.user.api_key = btoa("&api-key=" + encodeURIComponent("{}"));
 
     loginAttempt();
   }
@@ -644,7 +644,7 @@ function manageTemplateBtnState() {
         else {
           document.getElementById("btn-toSpira").disabled = false;
           document.getElementById("btn-fromSpira").disabled = false;
-          
+
           document.getElementById("message-fetching-data").style.visibility = "hidden";
           document.getElementById("main-guide-1").classList.add("pale");
           document.getElementById("main-guide-2").classList.remove("pale");
@@ -827,22 +827,23 @@ function sendToSpiraComplete(log) {
   hideLoadingSpinner();
   if (devMode) console.log(log);
 
-  //if array (which holds error responses) is present, and errors present
-  if (log.errorCount) {
-    var errorMessages = log.entries
-      .filter(function (entry) { return entry.error; })
-      .map(function (entry) { return entry.message; });
+  if (log) {
+    //if array (which holds error responses) is present, and errors present
+    if (log.errorCount) {
+      var errorMessages = log.entries
+        .filter(function (entry) { return entry.error; })
+        .map(function (entry) { return entry.message; });
 
-  }
-  //runs the export success function, passes a boolean flag, if there are errors the flag is true.
-  if (log && log.status) {
-    if (isGoogle) {
-      google.script.run.operationComplete(log.status);
-    } else {
-      msOffice.operationComplete(log.status);
+    }
+    //runs the export success function, passes a boolean flag, if there are errors the flag is true.
+    if (log && log.status) {
+      if (isGoogle) {
+        google.script.run.operationComplete(log.status);
+      } else {
+        msOffice.operationComplete(log.status);
+      }
     }
   }
-
 }
 
 
