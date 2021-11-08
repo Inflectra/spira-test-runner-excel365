@@ -1977,10 +1977,6 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
             //if we had an execution status pre-checking failure, log it to the TC cell
             if (item[params.specialFields.standardAssociationField] == value && item.FailingCondition == params.preCheckEnums.actualResult) {
               //since we can have duplicate values in the sheet, we need an extra check
-              //TEM UM BUG AQUI AINDA: COMO DIFERENCIAR UMA LINHA DE TEST STEP QUE NÃO É DE TX DE UMA QUE É?
-              //IDEIA: CRIAR UMA FUNCAO IS TEST SET, QUE VAI RETORNANDO AS LINHAS PRA DESCOBRIR, E COLOCAR ESSA FUNCÃO 
-              //COMO CONDIÇÃO NO IF, NO LUGAR DE sheetData[row][2] != ''
-              //obs: o pre-check log não traz essa diferenciação -> fazer tbm!
               if ((!item[params.specialFields.secondaryShellField] && !isTestSet) ||
                 (item[params.specialFields.secondaryShellField] && isTestSet)) {
                 var checkingFieldNote = 'Missing Actual Result: This TestStep needs to have an Actual Result, since it failed.';
