@@ -183,7 +183,7 @@ function Data() {
         bgRunField: '#c0fcd6',
         header: '#ffffff',
         headerRequired: '#000000',
-        warning: '#ffcccc',
+        warning: '#fc6060',
         cellBorder: '#D9D9D9',
         bgOriginal: '#ffffff'
     };

@@ -596,7 +596,7 @@ function error(type, err) {
   var message = "",
     details = "";
   if (type == 'impExp') {
-    message = 'There was an input error. Please check your network connection and make sure your Spira user can view and create Test Sets, Test Cases, Test Steps, and Test Runs. For further  information, please refer to the <a href=\"' + params.documentationURL + '\">documentation</a>.'; 
+    message = 'There was an input error. Please check your network connection and make sure your Spira user can view Test Sets, Test Cases, and Test Steps, as well as create Test Runs and Incidents. Also, make sure you have Test Cases and/or Test Sets assigned to you in this product. For further  information, please refer to the <a href=\"' + params.documentationURL + '\">documentation</a>.';
   } else if (type == "network") {
     message = 'Network error. Please check your username, url, and password. If correct make sure you have the correct permissions.';
     details = err ? `<br><br>STATUS: ${err.status ? err.status : "unknown"}<br>MESSAGE: ${err.response ? err.response.text : "unknown"}` : "";
@@ -1563,7 +1563,6 @@ async function sendToSpira(model, fieldTypeEnums) {
 
                 //Check if the data can actually be sent to Spira
                 var preCheckLog = preCheckData(entriesForExport, model);
-
                 //only proceed if there's no data pre-validation errors
                 if (!preCheckLog.globalFailureStatus) {
                   var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
@@ -1652,17 +1651,19 @@ function preCheckData(entriesForExport, model) {
     var isNoRun = false;
     //is there any non-success Test Step in it?
     var isFailure = false;
-
     //getting every Test Step
     item[params.specialFields.testRunStepsField].forEach(function (subItem) {
       if (failedIds.includes(subItem[params.specialFields.executionStatusField])) {
         //if the Test Step failed....
         isFailure = true;
-
         if (!subItem[params.specialFields.preCheckField1]) {
           //and does not have an Actual Result, we must flag it! (1st ver.)
           log.globalFailureStatus = true;
           subItem.FailingCondition = params.preCheckEnums.actualResult;
+          //if we have a Test Set ID in the parent (TC), also add this to the Test Step object
+          if (item[params.specialFields.secondaryShellField]) {
+            subItem[params.specialFields.secondaryShellField] = item[params.specialFields.secondaryShellField];
+          }
           log.artifacts.push(subItem);
         }
         else {
@@ -1945,6 +1946,13 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
         associationNote = null,
         value = sheetData[row][col];
       var cellRange = sheet.getCell(row + 1, col);
+      var comments = context.workbook.comments;
+
+      async function addCellComment(cellRange, bgColor, comments, checkingFieldNote) {
+        bgColor = model.colors.warning;
+        cellRange.set({ format: { fill: { color: bgColor } } });
+        comments.add(cellRange, checkingFieldNote);
+      }
 
       //handling the pre-checking log
       if (preCheckingLog != null) {
@@ -1953,28 +1961,31 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
           preCheckingLog.artifacts.forEach(function (item) {
             //if we had an execution status pre-checking failure, log it to the TC cell
             if (item[params.specialFields.standardShellField] == value && item.FailingCondition == params.preCheckEnums.executionStatus) {
-              bgColor = model.colors.warning;
-              cellRange.set({ format: { fill: { color: bgColor } } });
-              bgColor = null;
-              var checkingFieldNote = 'This TestCase contains an invalid execution statuses combination. For further information, please refer to the documentation.';
-              var comments = context.workbook.comments;
-              comments.add(cellRange, 'Invalid Execution Statuses: ' + checkingFieldNote);
+              //since we can have duplicate values in the sheet, we need an extra check
+              if ((!item[params.specialFields.secondaryShellField] && sheetData[row][2] == '') ||
+                (item[params.specialFields.secondaryShellField] && sheetData[row][2] != '')) {
+                var checkingFieldNote = 'Invalid Execution Statuses: This TestCase contains an invalid execution statuses combination. For further information, please refer to the documentation.';
+                addCellComment(cellRange, model.colors.warning, comments, checkingFieldNote);
+              }
             }
           });
-
-
         }
         else if (col == 1) {
           //checking if the TS failed
           preCheckingLog.artifacts.forEach(function (item) {
+            var isTestSet = IsTestSet(sheetData, row);
             //if we had an execution status pre-checking failure, log it to the TC cell
             if (item[params.specialFields.standardAssociationField] == value && item.FailingCondition == params.preCheckEnums.actualResult) {
-              bgColor = model.colors.warning;
-              cellRange.set({ format: { fill: { color: bgColor } } });
-              bgColor = null;
-              var checkingFieldNote = 'This TestStep needs to have an Actual Result, since it failed.';
-              var comments = context.workbook.comments;
-              comments.add(cellRange, 'Missing Actual Result: ' + checkingFieldNote);
+              //since we can have duplicate values in the sheet, we need an extra check
+              //TEM UM BUG AQUI AINDA: COMO DIFERENCIAR UMA LINHA DE TEST STEP QUE NÃO É DE TX DE UMA QUE É?
+              //IDEIA: CRIAR UMA FUNCAO IS TEST SET, QUE VAI RETORNANDO AS LINHAS PRA DESCOBRIR, E COLOCAR ESSA FUNCÃO 
+              //COMO CONDIÇÃO NO IF, NO LUGAR DE sheetData[row][2] != ''
+              //obs: o pre-check log não traz essa diferenciação -> fazer tbm!
+              if ((!item[params.specialFields.secondaryShellField] && !isTestSet) ||
+                (item[params.specialFields.secondaryShellField] && isTestSet)) {
+                var checkingFieldNote = 'Missing Actual Result: This TestStep needs to have an Actual Result, since it failed.';
+                addCellComment(cellRange, model.colors.warning, comments, checkingFieldNote);
+              }
             }
           });
         }
@@ -2145,6 +2156,25 @@ function setFeedbackBgColor(cell, error, field, fieldTypeEnums, artifact, colors
 }
 
 
+// function that checks if a given row is part of a Test Set
+// @param: sheetData - set of spreadsheet rows
+// @param: row - the row number to be analized
+// @return: boolean that represents if the giver row is or is not part of a TestSet
+function IsTestSet(sheetData, row) {
+  //looking back for a Test Case header
+  for (var i = row-1; i >= 0; i--) {
+    if (sheetData[i][0] != '') {
+      //this is a Test Case header -> we need to check if this has a Test Set ID
+      if(sheetData[i][2] != ''){
+        return true;
+      }
+      else{
+        return false;
+      }
+    }
+  }
+  return false;
+}
 
 // function that reviews a specific cell against it's field and sets any notes required
 // currently only adds error message as note to ID field
@@ -2956,10 +2986,10 @@ function processSendToSpiraResponse(i, sentToSpira, entriesForExport, artifact, 
     }
     else {
       if (sentToSpira.errorMessage.status == 400) {
-        response.message = "Error: The Test Run could not be created. Please check your data and try again.";
+        response.message = "Error: The Test Run could not be created. Please check your data and user permissions.";
       }
       else {
-        response.message = sentToSpira.errorMessage;
+        response.message = "Error: The Test Run could not be created. Please check your data and user permissions.";
       }
     }
     //Sets error HTML modals

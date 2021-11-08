@@ -113,7 +113,7 @@ Office.onReady(info => {
 function setDevStuff(devMode) {
   if (devMode) {
     document.getElementById("btn-dev").classList.remove("hidden");
-    model.user.url = "";
+    model.user.url = "https://";
     model.user.userName = "administrator";
     model.user.api_key = btoa("&api-key=" + encodeURIComponent("{}"));
 
