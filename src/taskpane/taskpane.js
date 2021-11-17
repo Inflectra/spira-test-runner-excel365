@@ -12,7 +12,6 @@ var uiSelection = new tempDataStore();
 
 // if devmode enabled, set the required fields and show the dev button
 var devMode = true;
-var isGoogle = false;
 
 //global flag for the Get Last TS run status check box
 var lastStatusMode = true;
@@ -35,36 +34,6 @@ var UI_MODE = {
   getData: 3,
   errorMode: 4
 };
-
-/*
- *
- * ============================
- * GOOGLE SHEETS SPECIFIC SETUP
- * ============================
- *
- */
-
-// Google Sheets specific code to run at first launch
-(function () {
-  if (typeof google != "undefined") {
-    isGoogle = true;
-    // for dev mode only - comment out or set to false to disable any UI dev features
-    setDevStuff(devMode);
-
-    // add event listeners to the dom
-    setEventListeners();
-
-    // dom specific changes
-    document.getElementById("help-connection-excel").style.display = "none";
-  }
-})();
-
-
-
-
-
-
-
 
 /*
  *
@@ -113,7 +82,7 @@ Office.onReady(info => {
 function setDevStuff(devMode) {
   if (devMode) {
     document.getElementById("btn-dev").classList.remove("hidden");
-    model.user.url = "https://";
+    model.user.url = "";
     model.user.userName = "administrator";
     model.user.api_key = btoa("&api-key=" + encodeURIComponent("{}"));
 
@@ -144,11 +113,7 @@ function setEventListeners() {
 
   // changing of dropdowns
   document.getElementById("select-product").onchange = changeProjectSelect;
-  document.getElementById("select-artifact").onchange = changeArtifactSelect;
-
-  document.getElementById("btn-toSpira").onclick = sendToSpiraAttempt;
   document.getElementById("btn-fromSpira").onclick = getFromSpiraAttempt;
-  document.getElementById("btn-template").onclick = updateTemplateAttempt;
   document.getElementById("btn-updateToSpira").onclick = updateSpiraAttempt;
 
   document.getElementById("btn-help-back").onclick = function () { panelToggle("help") };
@@ -216,13 +181,9 @@ function clearAddonData() {
 function clearSheet(shouldClear) {
   var shouldClearToUse = typeof shouldClear !== 'undefined' ? shouldClear : true;
   if (shouldClearToUse) {
-    if (isGoogle) {
-      google.script.run.clearAll();
-    } else {
-      msOffice.clearAll()
-        .then((response) => document.getElementById("panel-confirm").classList.add("offscreen"))
-        .catch((error) => errorExcel(error));
-    }
+    msOffice.clearAll()
+      .then((response) => document.getElementById("panel-confirm").classList.add("offscreen"))
+      .catch((error) => errorExcel(error));
   }
 }
 
@@ -249,30 +210,20 @@ function resetSidebar() {
 
 function resetUi() {
   // disable buttons and dropdowns
-  document.getElementById("btn-template").disabled = true;
-  document.getElementById("pnl-template").style.display = "none";
-  document.getElementById("select-artifact").disabled = true;
   document.getElementById("btn-fromSpira").disabled = true;
-  document.getElementById("btn-toSpira").disabled = true;
   document.getElementById("btn-updateToSpira").disabled = true;
-  document.getElementById("btn-toSpira").innerHTML = "Prepare Template";
 
-  // reset artifact dropdown to 'Select an Artifact'
-  document.getElementById("select-artifact").selectedIndex = "0";
   // hide and clear the template info box
   document.getElementById("template-project").textContent = "";
-  document.getElementById("template-artifact").textContent = "";
 
   // reset action buttons
   document.getElementById("btn-fromSpira").style.display = "";
-  document.getElementById("btn-toSpira").style.display = "";
   document.getElementById("btn-updateToSpira").style.display = "";
 
 
   // reset guide text on the main pane
   document.getElementById("main-guide-1").classList.remove("pale");
   document.getElementById("main-guide-1-fromSpira").style.display = "";
-  document.getElementById("main-guide-1-toSpira").style.display = "";
   document.getElementById("main-heading-fromSpira").style.display = "";
   document.getElementById("main-heading-toSpira").style.display = "";
   document.getElementById("main-guide-2").classList.add("pale");
@@ -314,8 +265,7 @@ function setDropdown(selectId, array, firstMessage) {
 function isModelDifferentToSelection() {
   if (model.isTemplateLoaded) {
     var projectHasChanged = model.currentProject.id !== getSelectedProject().id;
-    var artifactHasChanged = model.currentArtifact.id !== params.artifacts[0].id;
-    return projectHasChanged || artifactHasChanged;
+    return projectHasChanged;
   } else {
     return false;
   }
@@ -367,19 +317,12 @@ function login() {
   showLoadingSpinner();
   // call server side function to get projects
   // also serves as authentication check, if the user credentials aren't correct it will throw a network error
-  if (isGoogle) {
-    google.script.run
-      .withSuccessHandler(populateProjects)
-      .withFailureHandler(errorNetwork)
-      .getProjects(model.user);
-  } else {
-    msOffice.getProjects(model.user)
-      .then(response => populateProjects(response.body))
-      .catch(err => {
-        return errorNetwork(err)
-      }
-      );
-  }
+  msOffice.getProjects(model.user)
+    .then(response => populateProjects(response.body))
+    .catch(err => {
+      return errorNetwork(err)
+    }
+    );
 }
 
 
@@ -401,7 +344,7 @@ function populateProjects(projects) {
   model.projects = pairedDownProjectsData;
 
   // get UI logic ready for decision panel
-  showMainPanel('run');
+  showMainPanel();
   hideLoadingSpinner();
 }
 
@@ -422,26 +365,15 @@ function populateProjects(projects) {
 */
 
 // manage the switching of the UI off the login screen on succesful login and retrieval of projects
-function showMainPanel(type) {
+function showMainPanel() {
 
   setDropdown("select-product", model.projects, "Select a product");
-  setDropdown("select-artifact", params.artifacts, "Select an artifact");
 
   // set the buttons to the correct mode
-  if (type == "send") {
-    document.getElementById("btn-fromSpira").style.display = "none";
-    document.getElementById("main-guide-1-fromSpira").style.display = "none";
-    document.getElementById("main-heading-fromSpira").style.display = "none";
-    document.getElementById("btn-updateToSpira").style.visibility = "hidden";
-    document.getElementById("main-guide-3").style.visibility = "hidden";
-  } else {
-    document.getElementById("btn-toSpira").style.display = "none";
-    document.getElementById("main-guide-1-toSpira").style.display = "none";
     document.getElementById("main-heading-toSpira").style.display = "none";
     document.getElementById("main-guide-3").style.visibility = "visible";
     document.getElementById("btn-updateToSpira").style.visibility = "visible";
-  }
-
+  
   // opens the panel
   showPanel("main");
   hideLoadingSpinner();
@@ -486,13 +418,10 @@ function logout(shouldLogout) {
 function changeProjectSelect(e) {
   //sets the UI to correspond to this mode
   artifactUpdateUI(UI_MODE.newProject);
-
+  
   // if the project field has not been selected all other selected buttons are disabled
   if (e.target.value == 0) {
-    document.getElementById("select-artifact").disabled = true;
-    document.getElementById("btn-toSpira").disabled = true;
     document.getElementById("btn-fromSpira").disabled = true;
-    document.getElementById("btn-template").disabled = true;
     uiSelection.currentProject = null;
   } else {
     // get the project object and update project information if project has changed
@@ -504,10 +433,8 @@ function changeProjectSelect(e) {
       //manageTemplateBtnState();
       // kick off API calls
       getProjectSpecificInformation(model.user, uiSelection.currentProject.id);
-
       // for 6.1 the v6 API for get projects does not get the project template IDs so have to do this
       getTemplateFromProjectId(model.user, uiSelection.currentProject.id, uiSelection.currentArtifact);
-
       // since we already have our artifact selected (test runs), proceed the operations:
       // get the artifact object and update artifact information if artifact has changed
       var chosenArtifact = params.artifacts[0];
@@ -517,7 +444,6 @@ function changeProjectSelect(e) {
 
       // enable template button only when all info is received - otherwise keep it disabled
       manageTemplateBtnState();
-
       // kick off API calls - if we have a current template and project
       if (uiSelection.currentProject.templateId && uiSelection.currentProject.id) {
         getArtifactSpecificInformation(model.user, uiSelection.currentProject.templateId, uiSelection.currentProject.id, uiSelection.currentArtifact);
@@ -531,16 +457,9 @@ function changeProjectSelect(e) {
 }
 
 function getTemplateFromProjectId(user, projectId, artifact) {
-  if (isGoogle) {
-    google.script.run
-      .withSuccessHandler(getArtifactSpecificInformationInterim)
-      .withFailureHandler(errorNetwork)
-      .getTemplateFromProjectId(user, projectId);
-  } else {
-    msOffice.getTemplateFromProjectId(user, projectId)
-      .then((response) => getArtifactSpecificInformationInterim(response.body))
-      .catch((error) => errorNetwork(error));
-  }
+  msOffice.getTemplateFromProjectId(user, projectId)
+    .then((response) => getArtifactSpecificInformationInterim(response.body))
+    .catch((error) => errorNetwork(error));
 
   function getArtifactSpecificInformationInterim(template) {
     uiSelection.currentProject.templateId = template.ProjectTemplateId;
@@ -586,45 +505,13 @@ function artifactUpdateUI(mode) {
 }
 
 
-function changeArtifactSelect(e) {
-  //sets the UI to correspond to this mode
-  artifactUpdateUI(UI_MODE.newArtifact);
-  if (e.target.value == 0) {
-    document.getElementById("btn-toSpira").disabled = true;
-    document.getElementById("btn-fromSpira").disabled = true;
-    document.getElementById("btn-template").disabled = true;
-    uiSelection.currentArtifact = null;
-  } else {
-    // get the artifact object and update artifact information if artifact has changed
-    var chosenArtifact = getSelectedArtifact();
-
-    if (chosenArtifact !== uiSelection.currentArtifact) {
-      //set the temp date store artifact to the one selected;
-      uiSelection.currentArtifact = chosenArtifact;
-
-      // enable template button only when all info is received - otherwise keep it disabled
-      manageTemplateBtnState();
-
-      // kick off API calls - if we have a current template and project
-      if (uiSelection.currentProject.templateId && uiSelection.currentProject.id) {
-        getArtifactSpecificInformation(model.user, uiSelection.currentProject.templateId, uiSelection.currentProject.id, uiSelection.currentArtifact);
-      }
-    }
-  }
-}
-
-
-
 // disables and enables the main action buttons based on status of required API calls
 function manageTemplateBtnState() {
   // initially disable the button, because required API calls not completed
-  document.getElementById("btn-toSpira").disabled = true;
   document.getElementById("btn-fromSpira").disabled = true;
-  document.getElementById("btn-template").disabled = true;
 
   // only try to enable the button when both a project and artifact have been chosen
   if (uiSelection.currentProject && uiSelection.currentArtifact) {
-
     // set a function to run repeatedly until all gets are done
     // then enable the button, and stop the timer loop
     var checkGetsSuccess = setInterval(updateButtonStatus, 500);
@@ -642,7 +529,6 @@ function manageTemplateBtnState() {
           document.getElementById("message-fetching-data").style.visibility = "hidden";
         }
         else {
-          document.getElementById("btn-toSpira").disabled = false;
           document.getElementById("btn-fromSpira").disabled = false;
 
           document.getElementById("message-fetching-data").style.visibility = "hidden";
@@ -653,18 +539,6 @@ function manageTemplateBtnState() {
         }
 
         clearInterval(checkGetsSuccess);
-
-        // if there is a discrepancy between the dropdown and the currently active template
-        // only do this is user will send to spira - determined by whether the send to spira button is visible
-        if (document.getElementById("btn-toSpira").style.display != "none") {
-          if (isModelDifferentToSelection()) {
-            document.getElementById("pnl-template").style.display = "";
-            document.getElementById("btn-template").disabled = false;
-          } else {
-            document.getElementById("pnl-template").style.display = "none";
-            document.getElementById("btn-template").disabled = true;
-          }
-        }
       }
       else {
       }
@@ -720,16 +594,9 @@ function getFromSpiraAttempt() {
   if (model.isTemplateLoaded && !isModelDifferentToSelection()) {
     showLoadingSpinner();
     //call export function
-    if (isGoogle) {
-      google.script.run
-        .withFailureHandler(errorImpExp)
-        .withSuccessHandler(getFromSpiraComplete)
-        .getFromSpiraGoogle(model, params.fieldType);
-    } else {
-      msOffice.getFromSpiraExcel(model, params.fieldType, lastStatusMode)
-        .then((response) => getFromSpiraComplete(response))
-        .catch((error) => errorImpExp(error));
-    }
+    msOffice.getFromSpiraExcel(model, params.fieldType, lastStatusMode)
+      .then((response) => getFromSpiraComplete(response))
+      .catch((error) => errorImpExp(error));
   } else {
     //if no template - then get the template
     createTemplateAttempt();
@@ -753,11 +620,7 @@ function getFromSpiraComplete(log) {
 
   //runs the export success function, passes a boolean flag, if there are errors the flag is true.
   if (log && log.status) {
-    if (isGoogle) {
-      google.script.run.operationComplete(log.status);
-    } else {
-      msOffice.operationComplete(log.status);
-    }
+    msOffice.operationComplete(log.status);
   }
 
   document.getElementById('main-guide-2').style.fontWeight = 'normal';
@@ -771,32 +634,6 @@ function getFromSpiraComplete(log) {
 
 }
 
-
-
-function sendToSpiraAttempt() {
-  // first update state to reflect user intent
-  model.isGettingDataAttempt = false;
-  //check that template is loaded
-  if (model.isTemplateLoaded) {
-    showLoadingSpinner();
-
-    //call export function
-    if (isGoogle) {
-      google.script.run
-        .withFailureHandler(errorImpExp)
-        .withSuccessHandler(sendToSpiraComplete)
-        .sendToSpira(model, params.fieldType);
-    } else {
-      msOffice.sendToSpira(model, params.fieldType)
-        .then((response) => sendToSpiraComplete(response))
-        .catch((error) => errorImpExp(error));
-    }
-  } else {
-    //if no template - then get the template
-    createTemplateAttempt();
-  }
-}
-
 function updateSpiraAttempt() {
 
   // first update state to reflect user intent
@@ -806,19 +643,12 @@ function updateSpiraAttempt() {
     showLoadingSpinner();
 
     //call export function
-    if (isGoogle) {
-      google.script.run
-        .withFailureHandler(errorImpExp)
-        .withSuccessHandler(sendToSpiraComplete)
-        .sendToSpira(model, params.fieldType, true);
-    } else {
-      msOffice.sendToSpira(model, params.fieldType)
-        .then((response) => sendToSpiraComplete(response))
-        .catch((error) => errorImpExp(error));
-    }
+    msOffice.sendToSpira(model, params.fieldType)
+      .then((response) => sendToSpiraComplete(response))
+      .catch((error) => errorImpExp(error));
   } else {
     //if no template - throw an error
-    errorExcel("The spreadsheet does not match the selected artifact. Please check your data.")
+    errorExcel("It seems this is the wrong spreadsheet. Please check your data.")
   }
 
 }
@@ -837,11 +667,7 @@ function sendToSpiraComplete(log) {
     }
     //runs the export success function, passes a boolean flag, if there are errors the flag is true.
     if (log && log.status) {
-      if (isGoogle) {
-        google.script.run.operationComplete(log.status);
-      } else {
-        msOffice.operationComplete(log.status);
-      }
+      msOffice.operationComplete(log.status);
     }
   }
 }
@@ -914,35 +740,14 @@ function getSelectedProject() {
   return projectSelected;
 }
 
-
-
-// retrieves the artifact object that matches the artifact selected in the dropdown
-// returns an artifact object
-function getSelectedArtifact() {
-  // store dropdown values
-  var select = document.getElementById("select-artifact");
-  var artifactDropdownVal = select.options[select.selectedIndex].value;
-  // filter the artifact lists to those chosen 
-  var artifactSelected = params.artifacts.filter(function (artifact) {
-    return artifact.id == artifactDropdownVal;
-  })[0];
-  return artifactSelected;
-}
-
-
-
 // kicks off all relevant API calls to get project specific information
 // @param: user - the user object of the logged in user
 // @param: projectId - int of the reqested project
 function getProjectSpecificInformation(user, projectId) {
   model.projectGetRequestsMade = 0;
   // get project information
-  getUsers(user, projectId);
-  getComponents(user, projectId);
   getReleases(user, projectId);
 }
-
-
 
 // kicks off all relevant API calls to get artifact specific information
 // @param: user - the user object of the logged in user
@@ -981,59 +786,15 @@ function fieldsWithBespokeData(artifactFields) {
 
 
 
-// starts GET request to Spira for project components
-// @param: user - the user object of the logged in user
-// @param: projectId - int of the reqested project
-function getComponents(user, projectId) {
-  // call server side fetch
-  if (isGoogle) {
-    google.script.run
-      .withSuccessHandler(getComponentsSuccess)
-      .withFailureHandler(errorNetwork)
-      .getComponents(user, projectId);
-  } else {
-    msOffice.getComponents(user, projectId)
-      .then((response) => getComponentsSuccess(response.body))
-      .catch((error) => errorNetwork(error));
-  }
-}
-
-
-
-// formats and sets component data on the model
-function getComponentsSuccess(data) {
-  // clear old values
-  uiSelection.projectComponents = [];
-  // add relevant data to the main model store
-  uiSelection.projectComponents = data
-    .filter(function (item) { return item.IsActive; })
-    .map(function (item) {
-      return {
-        id: item.ComponentId,
-        name: item.Name
-      };
-    });
-  model.projectGetRequestsMade++;
-}
-
-
-
 // starts GET request to Spira for project / artifact custom properties
 // @param: user - the user object of the logged in user
 // @param: projectId - int of the reqested project
 // @param: artifactId - int of the reqested artifact
 function getCustoms(user, projectId, artifactId) {
   // call server side fetch
-  if (isGoogle) {
-    google.script.run
-      .withSuccessHandler(getCustomsSuccess)
-      .withFailureHandler(errorNetwork)
-      .getCustoms(user, projectId, artifactId);
-  } else {
-    msOffice.getCustoms(user, projectId, artifactId)
-      .then((response) => getCustomsSuccess(response.body))
-      .catch((error) => errorNetwork(error));
-  }
+  msOffice.getCustoms(user, projectId, artifactId)
+    .then((response) => getCustomsSuccess(response.body))
+    .catch((error) => errorNetwork(error));
 }
 
 
@@ -1081,20 +842,13 @@ function getCustomsSuccess(data) {
 // @param: templateId - int of the reqested template
 function getBespoke(user, templateId, projectId, artifactId, field) {
   // call server side fetch
-  if (isGoogle) {
-    google.script.run
-      .withSuccessHandler(getBespokeSuccess)
-      .withFailureHandler(errorNetwork)
-      .getBespoke(user, templateId, projectId, artifactId, field);
-  } else {
-    msOffice.getBespoke(user, templateId, projectId, artifactId, field)
-      .then((response) => getBespokeSuccess({
-        artifactName: artifactId,
-        field: field,
-        values: response.body
-      }))
-      .catch((error) => errorNetwork(error));
-  }
+  msOffice.getBespoke(user, templateId, projectId, artifactId, field)
+    .then((response) => getBespokeSuccess({
+      artifactName: artifactId,
+      field: field,
+      values: response.body
+    }))
+    .catch((error) => errorNetwork(error));
 }
 
 
@@ -1154,16 +908,9 @@ function getBespokeSuccess(data) {
 // @param: projectId - int of the reqested project
 function getReleases(user, projectId, artifactId) {
   // call server side fetch
-  if (isGoogle) {
-    google.script.run
-      .withSuccessHandler(getReleasesSuccess)
-      .withFailureHandler(errorNetwork)
-      .getReleases(user, projectId);
-  } else {
-    msOffice.getReleases(user, projectId)
-      .then((response) => getReleasesSuccess(response.body))
-      .catch((error) => errorNetwork(error));
-  }
+  msOffice.getReleases(user, projectId)
+    .then((response) => getReleasesSuccess(response.body))
+    .catch((error) => errorNetwork(error));
 }
 // formats and sets release data on the model
 function getReleasesSuccess(data) {
@@ -1178,44 +925,6 @@ function getReleasesSuccess(data) {
   });
   model.projectGetRequestsMade++;
 }
-
-
-
-// starts GET request to Spira for project users properties
-// @param: user - the user object of the logged in user
-// @param: projectId - int of the reqested project
-function getUsers(user, projectId) {
-  // call server side fetch
-  if (isGoogle) {
-    google.script.run
-      .withSuccessHandler(getUsersSuccess)
-      .withFailureHandler(errorNetwork)
-      .getUsers(user, projectId);
-  } else {
-    msOffice.getUsers(user, projectId)
-      .then((response) => getUsersSuccess(response.body))
-      .catch((error) => errorNetwork(error));
-  }
-}
-
-
-
-// formats and sets user data on the model
-function getUsersSuccess(data) {
-  // clear old values
-  uiSelection.projectUsers = [];
-  // map through user obj and assign names
-  uiSelection.projectUsers = data.map(function (item) {
-    return {
-      id: item.UserId,
-      username: item.UserName,
-      name: item.FullName,
-    };
-  });
-  model.projectGetRequestsMade++;
-}
-
-
 
 // check to see that all project and artifact requests have been made - ie that successes match required requests
 // returns boolean
@@ -1233,12 +942,8 @@ function templateLoader() {
   // set the model based on data stored based on current dropdown selections
   model.currentProject = uiSelection.currentProject;
   model.currentArtifact = uiSelection.currentArtifact;
-  model.projectComponents = [];
   model.projectReleases = [];
-  model.projectUsers = [];
-  model.projectComponents = uiSelection.projectComponents;
   model.projectReleases = uiSelection.projectReleases;
-  model.projectUsers = uiSelection.projectUsers;
   // get variables ready
   var fields = templateFields[model.currentArtifact.field],
     hasBespoke = fieldsWithBespokeData(fields);
@@ -1266,16 +971,9 @@ function templateLoader() {
   });
 
   // call server side template function
-  if (isGoogle) {
-    google.script.run
-      .withSuccessHandler(templateLoaderSuccess)
-      .withFailureHandler(errorUnknown)
-      .templateLoader(model, params.fieldType, advancedMode);
-  } else {
-    msOffice.templateLoader(model, params.fieldType, advancedMode)
-      .then(response => templateLoaderSuccess(response))
-      .catch(error => error.description ? errorExcel(error) : errorNetwork(error));
-  }
+  msOffice.templateLoader(model, params.fieldType, advancedMode)
+    .then(response => templateLoaderSuccess(response))
+    .catch(error => error.description ? errorExcel(error) : errorNetwork(error));
 }
 
 
@@ -1296,14 +994,6 @@ function templateLoaderSuccess(response) {
   if (model.isGettingDataAttempt) {
     getFromSpiraAttempt();
   }
-  //enable the send to spira button
-  document.getElementById("btn-toSpira").innerHTML = "Add To Spira";
-  document.getElementById("btn-toSpira").title = "Create entered data in SpiraPlan"
-
-  //show text in the sidebar that tells the user what the template is set to:
-  document.getElementById("template-project").textContent = model.currentProject.name;
-  document.getElementById("template-artifact").textContent = model.currentArtifact.name;
-
 }
 
 
@@ -1325,20 +1015,14 @@ function templateLoaderSuccess(response) {
 *
 */
 function errorPopUp(type, err) {
-  if (isGoogle) {
-    google.script.run.error(type);
-    //sets the UI to correspond to this mode
-    artifactUpdateUI(UI_MODE.errorMode);
-  } else {
-    msOffice.error(type, err);
-    //sets the UI to correspond to this mode
-    artifactUpdateUI(UI_MODE.errorMode);
+  msOffice.error(type, err);
+  //sets the UI to correspond to this mode
+  artifactUpdateUI(UI_MODE.errorMode);
 
-    if (err != null) {
-      console.error("SpiraPlan Test Runner Tool encountered an error:", err.status ? err.status : "", err.response ? err.response.text : "", err.description ? err.description : "")
-    }
-    console.info("SpiraPlan Test Runner Tool: full error is... ", err)
+  if (err != null) {
+    console.error("SpiraPlan Test Runner Tool encountered an error:", err.status ? err.status : "", err.response ? err.response.text : "", err.description ? err.description : "")
   }
+  console.info("SpiraPlan Test Runner Tool: full error is... ", err)
   hideLoadingSpinner();
 }
 

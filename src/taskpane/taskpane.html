@@ -102,7 +102,6 @@
 
         <div id="main-guide-1">
             <p id="main-guide-1-fromSpira">a. Choose which product to get the data</p>
-            <p id="main-guide-1-toSpira">a. Choose which product and artifact to send</p>
         </div>
         <ul class="form">
             <li class="form-pair">
@@ -112,15 +111,6 @@
                 <select class="form-input" id="select-product">
                     <!--aysnc populated -->
                 </select>
-            </li>
-            <li class="form-pair">
-                <label class="form-label panel offscreen" for="select-artifact">
-                    Artifact:
-                </label>
-                <select class="form-input panel offscreen" disabled="true" id="select-artifact">
-                    <!--aysnc populated -->
-                </select>
-            </li>
         </ul>
 
 
@@ -128,26 +118,10 @@
             Fetching the data needed...
         </p>
 
-
-        <div class="pb-md" id="pnl-template" style="display: none">
-            <p>
-                The template is set to: <span id="template-artifact"></span>, in product: <span
-                    id="template-project"></span>, but you have chosen different options
-            </p>
-            <button class="action ms-Button ms-Button--default" disabled="true" id="btn-template"
-                title="Update the active sheet for the chosen template options" type="button">
-                Update Template
-            </button>
-        </div>
-
         <div>
             <p id="main-guide-2" class="pale">
                 b. Start the data transfer with Spira
             </p>
-            <button class="action ms-Button ms-Button--primary" disabled="true" id="btn-toSpira" type="button"
-                title="Prepare the active sheet so you can enter data into it">
-                Prepare Sheet
-            </button>
             <button class="action ms-Button ms-Button--primary" disabled="true" id="btn-fromSpira" type="button"
                 title="Get data for the specified artifact from SpiraPlan">
                 Get from Spira
@@ -201,7 +175,7 @@
 
         <h3>Quick Help Guide</h3>
         <p class="mt-0">For more information see our <a target="_blank"
-                href="http://spiradoc.inflectra.com/Migration-and-Integration/Importing-from-Microsoft-Excel-(Office365)/">documentation.</a>
+                href="http://spiradoc.inflectra.com/Unit-Testing-Integration/Spreadsheet-Test-Runner/">documentation.</a>
         </p>
 
         <div class="flex" id='help-header'>

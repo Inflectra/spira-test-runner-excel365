@@ -107,7 +107,7 @@ extraTsFixedFields: {
         })(),
     },
 //documentation URL to be used in error messages
-documentationURL: "https://spiradoc.inflectra.com/"
+documentationURL: "http://spiradoc.inflectra.com/Unit-Testing-Integration/Spreadsheet-Test-Runner/"
 };
 
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system
@@ -165,7 +165,7 @@ function Data() {
 
     this.currentArtifact = '';
 
-    this.projectGetRequestsToMake = 3; // users, components, releases
+    this.projectGetRequestsToMake = 1; //releases
     this.projectGetRequestsMade = 0;
 
     // counts of artifact specific calls to make

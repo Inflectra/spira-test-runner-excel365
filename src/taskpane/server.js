@@ -9,12 +9,10 @@ export {
   clearAll,
   error,
   getBespoke,
-  getComponents,
   getCustoms,
   getFromSpiraExcel,
   getProjects,
   getReleases,
-  getUsers,
   getTemplateFromProjectId,
   operationComplete,
   sendToSpira,
@@ -25,18 +23,6 @@ export {
 import { showPanel, hidePanel } from './taskpane.js';
 
 import { params } from './model.js';
-
-/*
- * =======
- * TODO
- * =======
- 
- - make sure when you change project / art the get / send buttons are disabled
- - check what happens when add more rows from get than are on sheet. Does the validation get copied down?
- */
-
-
-
 
 // globals
 var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
@@ -100,11 +86,13 @@ var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
 
   },
   INLINE_STYLING = "style='font-family: sans-serif'",
-  IS_GOOGLE = typeof UrlFetchApp != "undefined",
   ART_PARENT_IDS = {
     2: 'TestCaseId',
     7: 'TestCaseId'
-  };
+  },
+  TC_ID_COLUMN_INDEX = 0,
+  TS__ID_COLUMN_INDEX = 1,
+  TX_ID_COLUMN_INDEX = 2;
 
 /*
  * ======================
@@ -123,16 +111,12 @@ function onInstall(e) {
   onOpen(e);
 }
 
-
-
 // App script boilerplate open function
 // opens sidebar
 // Method `addItem`  is related to the 'Add-on' menu items. Currently just one is listed 'Start' in the dropdown menu
 function onOpen(e) {
   SpreadsheetApp.getUi().createAddonMenu().addItem('Start', 'showSidebar').addToUi();
 }
-
-
 
 // side bar function gets index.html and opens in side window
 function showSidebar() {
@@ -200,40 +184,13 @@ function save() {
 
 //clears active sheet in spreadsheet
 function clearAll() {
-
-  if (IS_GOOGLE) {
-    // get active spreadsheet
-    var spreadSheet = SpreadsheetApp.getActiveSpreadsheet(),
-      sheet = spreadSheet.getActiveSheet(),
-      lastColumn = sheet.getMaxColumns(),
-      lastRow = sheet.getMaxRows();
-
-    // Reset sheet name
-    sheet.setName(new Date().getTime());
-    sheet.clear();
-
-    // clears data validations and notes from the entire sheet
-    var range = sheet.getRange(1, 1, lastRow, lastColumn);
-    range.clearDataValidations().clearNote();
-
-    // remove any protections on the sheet
-    var protections = spreadSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-    for (var i = 0; i < protections.length; i++) {
-      var protection = protections[i];
-      if (protection.canEdit()) {
-        protection.remove();
-      }
-    }
-
-  } else {
-    return Excel.run(context => {
-      var sheet = context.workbook.worksheets.getActiveWorksheet();
-      // for excel we do not reset the sheet name because this can cause timing problems on some versions of Excel
-      var now = new Date().getTime();
-      sheet.getRange().clear();
-      return context.sync();
-    })
-  }
+  return Excel.run(context => {
+    var sheet = context.workbook.worksheets.getActiveWorksheet();
+    // for excel we do not reset the sheet name because this can cause timing problems on some versions of Excel
+    var now = new Date().getTime();
+    sheet.getRange().clear();
+    return context.sync();
+  })
 }
 
 
@@ -243,16 +200,10 @@ function clearAll() {
 // @param: isTemplateLoadFail - bool about whether this message means that the template load sequence has failed
 function popupShow(message, messageTitle, isTemplateLoadFail) {
   if (!message) return;
-
-  if (IS_GOOGLE) {
-    var htmlMessage = HtmlService.createHtmlOutput('<p ' + INLINE_STYLING + '>' + message + '</p>').setWidth(200).setHeight(75);
-    SpreadsheetApp.getUi().showModalDialog(htmlMessage, messageTitle || "");
-  } else {
-    showPanel("confirm");
-    document.getElementById("message-confirm").innerHTML = (messageTitle ? "<b>" + messageTitle + ":</b> " : "") + message;
-    document.getElementById("btn-confirm-cancel").style.visibility = "hidden";
-    document.getElementById("btn-confirm-ok").onclick = function () { popupHide() };
-  }
+  showPanel("confirm");
+  document.getElementById("message-confirm").innerHTML = (messageTitle ? "<b>" + messageTitle + ":</b> " : "") + message;
+  document.getElementById("btn-confirm-cancel").style.visibility = "hidden";
+  document.getElementById("btn-confirm-ok").onclick = function () { popupHide() };
   return !isTemplateLoadFail ? null : {
     isTemplateLoadFail: isTemplateLoadFail,
     message: message
@@ -294,19 +245,9 @@ function fetcher(currentUser, fetcherURL) {
   //set MIME type
   var params = { "Content-Type": "application/json", "accepts": "application/json" };
 
-  //call Google fetch function (UrlFetchApp) if using google
-  if (IS_GOOGLE) {
-    var response = UrlFetchApp.fetch(fullUrl, params);
-    //returns parsed JSON
-    //unparsed response contains error codes if needed
-    return JSON.parse(response);
-
-    //for v6 API in Spira you HAVE to send a Content-Type header
-  } else {
-    return superagent
-      .get(fullUrl)
-      .set("Content-Type", "application/json", "accepts", "application/json")
-  }
+  return superagent
+    .get(fullUrl)
+    .set("Content-Type", "application/json", "accepts", "application/json")
 
 }
 
@@ -328,16 +269,6 @@ function getProjects(currentUser) {
 // @param: projectId - int id for current project
 function getTemplateFromProjectId(currentUser, projectId) {
   var fetcherURL = API_PROJECT_BASE + projectId + '?';
-  return fetcher(currentUser, fetcherURL);
-}
-
-
-
-// Gets components for selected project.
-// @param: currentUser - object with details about the current user
-// @param: projectId - int id for current project
-function getComponents(currentUser, projectId) {
-  var fetcherURL = API_PROJECT_BASE + projectId + '/components?active_only=true&include_deleted=false&';
   return fetcher(currentUser, fetcherURL);
 }
 
@@ -369,16 +300,7 @@ function getBespoke(currentUser, templateId, projectId, artifactName, field) {
     fetcherURL = API_TEMPLATE_BASE + templateId + field.bespoke.url + '?';
   }
   var results = fetcher(currentUser, fetcherURL);
-
-  if (IS_GOOGLE) {
-    return {
-      artifactName: artifactName,
-      field: field,
-      values: results
-    }
-  } else {
-    return results;
-  }
+  return results;
 }
 
 
@@ -388,16 +310,6 @@ function getBespoke(currentUser, templateId, projectId, artifactName, field) {
 // @param: projectId - int id for current project
 function getReleases(currentUser, projectId) {
   var fetcherURL = API_PROJECT_BASE + projectId + '/releases?';
-  return fetcher(currentUser, fetcherURL);
-}
-
-
-
-// Gets users for selected project
-// @param: currentUser - object with details about the current user
-// @param: projectId - int id for current project
-function getUsers(currentUser, projectId) {
-  var fetcherURL = API_PROJECT_BASE + projectId + '/users?';
   return fetcher(currentUser, fetcherURL);
 }
 
@@ -468,18 +380,11 @@ function poster(body, currentUser, postUrl) {
   params.muteHttpExceptions = true;
   if (body) params.payload = body;
 
-  //call Google fetch function
-  if (IS_GOOGLE) {
-    var response = UrlFetchApp.fetch(fullUrl, params);
-    return response;
-  } else {
-    //for MS Excel, use superagent to return a promise to the taskpane
-    return superagent
-      .post(fullUrl)
-      .send(body)
-      .set("Content-Type", "application/json", "accepts", "application/json");
-
-  }
+  //for MS Excel, use superagent to return a promise to the taskpane
+  return superagent
+    .post(fullUrl)
+    .send(body)
+    .set("Content-Type", "application/json", "accepts", "application/json");
 }
 
 // General fetch function, using Google's built in fetch api
@@ -501,20 +406,13 @@ function putUpdater(body, currentUser, PUTUrl) {
   params.muteHttpExceptions = true;
   if (body) params.payload = body;
 
-  //call Google fetch function
-  if (IS_GOOGLE) {
-    var response = UrlFetchApp.fetch(fullUrl, params);
-    return response;
-  } else {
-    //for MS Excel, use superagent to return a promise to the taskpane
-
-    var putResult =
-      superagent
-        .put(fullUrl)
-        .send(body)
-        .set("Content-Type", "application/json", "accepts", "application/json");
-    return putResult;
-  }
+  //for MS Excel, use superagent to return a promise to the taskpane
+  var putResult =
+    superagent
+      .put(fullUrl)
+      .send(body)
+      .set("Content-Type", "application/json", "accepts", "application/json");
+  return putResult;
 }
 
 
@@ -609,11 +507,7 @@ function error(type, err) {
     message = 'Unkown error. Please try again later or contact your system administrator';
   }
 
-  if (IS_GOOGLE) {
-    okWarn(message);
-  } else {
-    popupShow(message + details, "");
-  }
+  popupShow(message + details, "");
 }
 
 
@@ -648,13 +542,8 @@ function warn(string) {
 // @param: message - string sent from the export function
 // @param: isTemplateLoadFail - bool about whether this message means that the template load sequence has failed
 function operationComplete(messageEnum, isTemplateLoadFail) {
-  if (IS_GOOGLE) {
-    var message = STATUS_MESSAGE_GOOGLE[messageEnum] || STATUS_MESSAGE_GOOGLE['1'];
-    okWarn(message);
-  } else {
-    var message = STATUS_MESSAGE_EXCEL[messageEnum] || STATUS_MESSAGE_EXCEL['1'];
-    return popupShow(message, "", isTemplateLoadFail);
-  }
+  var message = STATUS_MESSAGE_EXCEL[messageEnum] || STATUS_MESSAGE_EXCEL['1'];
+  return popupShow(message, "", isTemplateLoadFail);
 }
 
 // Alert pop up for no template present
@@ -701,52 +590,43 @@ function templateLoader(model, fieldTypeEnums, advancedMode) {
     })
   }
 
-  // select active sheet
-  if (IS_GOOGLE) {
-    sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    // set sheet (tab) name to model name
-    sheet.setName(newSheetName);
-    sheetSetForTemplate(sheet, model, fieldTypeEnums, null);
+  return Excel.run(function (context) {
+    // store the sheet and worksheet list for use later
+    sheet = context.workbook.worksheets.getActiveWorksheet();
 
-  } else {
-    return Excel.run(function (context) {
-      // store the sheet and worksheet list for use later
-      sheet = context.workbook.worksheets.getActiveWorksheet();
+    //reset the hidden status of the spreadsheet
+    var range = sheet.getRangeByIndexes(0, 0, 1, EXCEL_MAX_ROWS);
+    range.columnHidden = false;
 
-      //reset the hidden status of the spreadsheet
-      var range = sheet.getRangeByIndexes(0, 0, 1, EXCEL_MAX_ROWS);
-      range.columnHidden = false;
+    var worksheets = context.workbook.worksheets;
+    worksheets.load('items');
 
-      var worksheets = context.workbook.worksheets;
-      worksheets.load('items');
+    return context.sync()
+      .then(function () {
+        let onWrongSheet = false;
 
-      return context.sync()
-        .then(function () {
-          let onWrongSheet = false;
+        // check that no other worksheet has the same name as the one we need to call this sheet
+        if (worksheets.items.length > 1) {
+          worksheets.items.forEach(x => {
+            if (x.name == newSheetName && x.id !== sheet.id) {
+              onWrongSheet = true;
+            }
+          });
+        }
 
-          // check that no other worksheet has the same name as the one we need to call this sheet
-          if (worksheets.items.length > 1) {
-            worksheets.items.forEach(x => {
-              if (x.name == newSheetName && x.id !== sheet.id) {
-                onWrongSheet = true;
-              }
-            });
-          }
-
-          if (onWrongSheet) {
-            return operationComplete(STATUS_ENUM.wrongSheet, true);
-          } else {
-            // otherwise set the sheet name, then create the template
-            sheet.name = newSheetName;
-            return context.sync()
-              .then(function () {
-                return sheetSetForTemplate(sheet, model, fieldTypeEnums, context);
-              })
-          }
-        })
-        .catch(/*fail quietly*/);
-    })
-  }
+        if (onWrongSheet) {
+          return operationComplete(STATUS_ENUM.wrongSheet, true);
+        } else {
+          // otherwise set the sheet name, then create the template
+          sheet.name = newSheetName;
+          return context.sync()
+            .then(function () {
+              return sheetSetForTemplate(sheet, model, fieldTypeEnums, context);
+            })
+        }
+      })
+      .catch(/*fail quietly*/);
+  })
 }
 
 // wrapper function to set the header row, validation rules, and any extra formatting
@@ -788,30 +668,18 @@ function headerSetter(sheet, fields, colors, context) {
     backgrounds.push(background);
   }
 
-  if (IS_GOOGLE) {
-    sheet.getRange(1, 1, 1, fieldsLength)
-      .setWrap(true)
-      // the arrays need to be in an array as methods expect a 2D array for managing 2D ranges
-      .setBackgrounds([backgrounds])
-      .setFontColors([fontColors])
-      .setFontWeights([fontWeights])
-      .setValues([headerNames])
-      .protect().setDescription("header row").setWarningOnly(true);
-
-  } else {
-    var range = sheet.getRangeByIndexes(0, 0, 1, fieldsLength);
-    range.values = [headerNames];
-    for (var i = 0; i < fieldsLength; i++) {
-      var cellRange = sheet.getCell(0, i);
-      cellRange.set({
-        format: {
-          fill: { color: backgrounds[i] },
-          font: { color: fontColors[i], bold: fontWeights[i] == "bold" }
-        }
-      });
-    }
-    return context.sync();
+  var range = sheet.getRangeByIndexes(0, 0, 1, fieldsLength);
+  range.values = [headerNames];
+  for (var i = 0; i < fieldsLength; i++) {
+    var cellRange = sheet.getCell(0, i);
+    cellRange.set({
+      format: {
+        fill: { color: backgrounds[i] },
+        font: { color: fontColors[i], bold: fontWeights[i] == "bold" }
+      }
+    });
   }
+  return context.sync();
 }
 
 
@@ -823,7 +691,7 @@ function headerSetter(sheet, fields, colors, context) {
 // @param: fieldTypeEnums - enums for field types
 function contentValidationSetter(sheet, model, fieldTypeEnums, context) {
   // we can't easily get the max rows for excel so use the number of rows it always seems to have
-  var nonHeaderRows = IS_GOOGLE ? sheet.getMaxRows() - 1 : 1048576 - 1;
+  var nonHeaderRows = (1048576 - 1);
 
   for (var index = 0; index < model.fields.length; index++) {
     var columnNumber = index + 1,
@@ -844,28 +712,6 @@ function contentValidationSetter(sheet, model, fieldTypeEnums, context) {
         );
         break;
 
-      // INT and NUM fields are both treated by Sheets as numbers
-      case fieldTypeEnums.int:
-        setIntegerValidation(sheet, columnNumber, nonHeaderRows, false);
-        break;
-
-      // NUM fields are handled as decimals by Excel though
-      case fieldTypeEnums.num:
-        setNumberValidation(sheet, columnNumber, nonHeaderRows, false);
-        break;
-
-      // BOOL as Sheets has no bool validation, a yes/no dropdown is used
-      case fieldTypeEnums.bool:
-        // 'True' and 'False' don't work as dropdown choices
-        list.push("Yes", "No");
-        setDropdownValidation(sheet, columnNumber, nonHeaderRows, list, false);
-        break;
-
-      // DATE fields get date validation
-      case fieldTypeEnums.date:
-        setDateValidation(sheet, columnNumber, nonHeaderRows, false);
-        break;
-
       // DROPDOWNS and MULTIDROPDOWNS are both treated as simple dropdowns (Sheets does not have multi selects)
       case fieldTypeEnums.drop:
       case fieldTypeEnums.multi:
@@ -873,22 +719,6 @@ function contentValidationSetter(sheet, model, fieldTypeEnums, context) {
 
         for (var i = 0; i < fieldList.length; i++) {
           list.push(setListItemDisplayName(fieldList[i]));
-        }
-        setDropdownValidation(sheet, columnNumber, nonHeaderRows, list, false);
-        break;
-
-      // USER fields are dropdowns with the values coming from a project wide set list
-      case fieldTypeEnums.user:
-        for (var j = 0; j < model.projectUsers.length; j++) {
-          list.push(setListItemDisplayName(model.projectUsers[j]));
-        }
-        setDropdownValidation(sheet, columnNumber, nonHeaderRows, list, false);
-        break;
-
-      // COMPONENT fields are dropdowns with the values coming from a project wide set list
-      case fieldTypeEnums.component:
-        for (var k = 0; k < model.projectComponents.length; k++) {
-          list.push(setListItemDisplayName(model.projectComponents[k]));
         }
         setDropdownValidation(sheet, columnNumber, nonHeaderRows, list, false);
         break;
@@ -922,82 +752,16 @@ function contentValidationSetter(sheet, model, fieldTypeEnums, context) {
 // @param: list - array of values to show in a dropdown and use for validation
 // @param: allowInvalid - bool to state whether to restrict any values to those in validation or not
 function setDropdownValidation(sheet, columnNumber, rowLength, list, allowInvalid) {
-  if (IS_GOOGLE) {
-    // create range
-    var range = sheet.getRange(2, columnNumber, rowLength);
-
-    // create the validation rule
-    // requireValueInList - params are the array to use, and whether to create a dropdown list
-    var rule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(list, true)
-      .setAllowInvalid(allowInvalid)
-      .build();
-    range.setDataValidation(rule);
-
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
-    range.dataValidation.clear();
-    var approvedListRule = {
-      list: {
-        inCellDropDown: true,
-        source: list.join()
-      }
-    };
-    range.dataValidation.rule = approvedListRule;
-
-  }
+  var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
+  range.dataValidation.clear();
+  var approvedListRule = {
+    list: {
+      inCellDropDown: true,
+      source: list.join()
+    }
+  };
+  range.dataValidation.rule = approvedListRule;
 }
-
-
-
-// create date validation on set column based on specified values
-// @param: sheet - the sheet object
-// @param: columnNumber - int of the column to validate
-// @param: rowLength - int of the number of rows for range (global param)
-// @param: allowInvalid - bool to state whether to restrict any values to those in validation or not
-function setDateValidation(sheet, columnNumber, rowLength, allowInvalid) {
-  if (IS_GOOGLE) {
-    // create range
-    var range = sheet.getRange(2, columnNumber, rowLength);
-
-    // create the validation rule
-    var rule = SpreadsheetApp.newDataValidation()
-      .requireDate()
-      .setAllowInvalid(false)
-      .setHelpText('Must be a valid date')
-      .build();
-    range.setDataValidation(rule);
-
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
-    range.dataValidation.clear();
-
-
-    var greaterThan2000Rule = {
-      date: {
-        formula1: "2000-01-01",
-        operator: Excel.DataValidationOperator.greaterThan
-      }
-    };
-    range.dataValidation.rule = greaterThan2000Rule;
-
-    range.dataValidation.prompt = {
-      message: "Please enter a date.",
-      showPrompt: true,
-      title: "Valid dates only."
-    };
-    range.dataValidation.errorAlert = {
-      message: "Sorry, only dates are allowed",
-      showAlert: true,
-      style: "Stop",
-      title: "Invalid date entered"
-    };
-  }
-
-  //now set the cell format to dates
-  range.numberFormatLocal = "dd-mmm-yyyy";
-}
-
 
 
 // create positive integer validation on set column based on specified values
@@ -1006,134 +770,30 @@ function setDateValidation(sheet, columnNumber, rowLength, allowInvalid) {
 // @param: rowLength - int of the number of rows for range (global param)
 // @param: allowInvalid - bool to state whether to restrict any values to those in validation or not
 function setPositiveIntValidation(sheet, columnNumber, rowLength, allowInvalid) {
-  // create range
-  if (IS_GOOGLE) {
-    var range = sheet.getRange(2, columnNumber, rowLength);
+  var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
+  range.dataValidation.clear();
 
-    // create the validation rule
-    //must be a valid number greater than -1 (also excludes 1.1.0 style numbers)
-    var rule = SpreadsheetApp.newDataValidation()
-      .requireNumberGreaterThan(-1)
-      .setAllowInvalid(allowInvalid)
-      .setHelpText('Must be a positive number')
-      .build();
-    range.setDataValidation(rule);
+  var greaterThanZeroRule = {
+    wholeNumber: {
+      formula1: 0,
+      operator: Excel.DataValidationOperator.greaterThan
+    }
+  };
+  range.dataValidation.rule = greaterThanZeroRule;
 
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
-    range.dataValidation.clear();
-
-    var greaterThanZeroRule = {
-      wholeNumber: {
-        formula1: 0,
-        operator: Excel.DataValidationOperator.greaterThan
-      }
-    };
-    range.dataValidation.rule = greaterThanZeroRule;
-
-    range.dataValidation.prompt = {
-      message: "Please enter a positive number.",
-      showPrompt: true,
-      title: "Positive numbers only."
-    };
-    range.dataValidation.errorAlert = {
-      message: "Sorry, only positive numbers are allowed",
-      showAlert: true,
-      style: "Stop",
-      title: "Negative Number Entered"
-    };
-  }
+  range.dataValidation.prompt = {
+    message: "Please enter a positive number.",
+    showPrompt: true,
+    title: "Positive numbers only."
+  };
+  range.dataValidation.errorAlert = {
+    message: "Sorry, only positive numbers are allowed",
+    showAlert: true,
+    style: "Stop",
+    title: "Negative Number Entered"
+  };
 }
 
-// create number validation on set column based on specified values
-// @param: sheet - the sheet object
-// @param: columnNumber - int of the column to validate
-// @param: rowLength - int of the number of rows for range (global param)
-// @param: allowInvalid - bool to state whether to restrict any values to those in validation or not
-function setIntegerValidation(sheet, columnNumber, rowLength, allowInvalid) {
-  // create range
-  if (IS_GOOGLE) {
-    var range = sheet.getRange(2, columnNumber, rowLength);
-
-    // create the validation rule
-    //must be a valid number greater than -1 (also excludes 1.1.0 style numbers)
-    var rule = SpreadsheetApp.newDataValidation()
-      .requireNumberGreaterThan(0)
-      .setAllowInvalid(allowInvalid)
-      .setHelpText('Must be a whole number')
-      .build();
-    range.setDataValidation(rule);
-
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
-    range.dataValidation.clear();
-
-    var greaterThanZeroRule = {
-      wholeNumber: {
-        formula1: 0,
-        operator: Excel.DataValidationOperator.greaterThan
-      }
-    };
-    range.dataValidation.rule = greaterThanZeroRule;
-
-    range.dataValidation.prompt = {
-      message: "Please enter a valid number.",
-      showPrompt: true,
-      title: "Whole Numbers only"
-    };
-    range.dataValidation.errorAlert = {
-      message: "Sorry, only whole numbers are allowed.",
-      showAlert: true,
-      style: "Stop",
-      title: "Invalid entry"
-    };
-  }
-}
-
-// create decimal validation on set column based on specified values - identical to integer validation for Google Sheets as of 2020-07
-// @param: sheet - the sheet object
-// @param: columnNumber - int of the column to validate
-// @param: rowLength - int of the number of rows for range (global param)
-// @param: allowInvalid - bool to state whether to restrict any values to those in validation or not
-function setNumberValidation(sheet, columnNumber, rowLength, allowInvalid) {
-  // create range
-  if (IS_GOOGLE) {
-    var range = sheet.getRange(2, columnNumber, rowLength);
-
-    // create the validation rule
-    //must be a valid number greater than -1 (also excludes 1.1.0 style numbers)
-    var rule = SpreadsheetApp.newDataValidation()
-      .requireNumberGreaterThan(0)
-      .setAllowInvalid(allowInvalid)
-      .setHelpText('Must be a number')
-      .build();
-    range.setDataValidation(rule);
-
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
-    range.dataValidation.clear();
-
-    var greaterThanZeroRule = {
-      decimal: {
-        formula1: 0,
-        operator: Excel.DataValidationOperator.greaterThan
-      }
-    };
-    range.dataValidation.rule = greaterThanZeroRule;
-
-    range.dataValidation.prompt = {
-      message: "Please enter a valid number.",
-      showPrompt: true,
-      title: "Numbers only"
-    };
-    range.dataValidation.errorAlert = {
-      message: "Sorry, only numbers are allowed.",
-      showAlert: true,
-      style: "Stop",
-      title: "Invalid entry"
-    };
-  }
-}
 
 // create text validation on set column base
 // @param: sheet - the sheet object
@@ -1141,20 +801,17 @@ function setNumberValidation(sheet, columnNumber, rowLength, allowInvalid) {
 // @param: rowLength - int of the number of rows for range (global param)
 // @param: allowInvalid - bool to state whether to restrict any values to those in validation or not
 function setTextValidation(sheet, columnNumber, rowLength, allowInvalid) {
-  if (IS_GOOGLE) {
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
-    range.dataValidation.clear();
+  var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
+  range.dataValidation.clear();
 
-    range.numberFormat = '@';
+  range.numberFormat = '@';
 
-    range.dataValidation.errorAlert = {
-      message: "Sorry, only text string is allowed.",
-      showAlert: true,
-      style: "Stop",
-      title: "Invalid entry"
-    };
-  }
+  range.dataValidation.errorAlert = {
+    message: "Sorry, only text string is allowed.",
+    showAlert: true,
+    style: "Stop",
+    title: "Invalid entry"
+  };
 }
 
 // format columns based on a potential range of factors - eg hide unsupported columns
@@ -1163,7 +820,7 @@ function setTextValidation(sheet, columnNumber, rowLength, allowInvalid) {
 function contentFormattingSetter(sheet, model) {
   for (var i = 0; i < model.fields.length; i++) {
     var columnNumber = i + 1;
-    var nonHeaderRows = IS_GOOGLE ? sheet.getMaxRows() - 1 : 1048576 - 1;
+    var nonHeaderRows = (1048576 - 1);
 
     // protect column
     // read only fields - ie ones you can get from Spira but not create in Spira (as with IDs - eg task component)
@@ -1221,36 +878,33 @@ function contentFormattingSetter(sheet, model) {
 // @param: bgColor - string color to set on background as hex code (eg '#ffffff')
 // @param: name - string description for the protected range
 function protectColumn(sheet, columnNumber, rowLength, bgColor, name) {
-  if (IS_GOOGLE) {
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
+  var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
 
-    // set the background color
-    range.set({ format: { fill: { color: bgColor } } });
+  // set the background color
+  range.set({ format: { fill: { color: bgColor } } });
 
-    // now we can add data validation
-    // the easiest hack way to not allow any entry into the cell is to make sure its text length can only be zero
-    range.dataValidation.clear();
-    var textLengthZero = {
-      textLength: {
-        formula1: 0,
-        operator: Excel.DataValidationOperator.equalTo
-      }
-    };
-    range.dataValidation.rule = textLengthZero;
+  // now we can add data validation
+  // the easiest hack way to not allow any entry into the cell is to make sure its text length can only be zero
+  range.dataValidation.clear();
+  var textLengthZero = {
+    textLength: {
+      formula1: 0,
+      operator: Excel.DataValidationOperator.equalTo
+    }
+  };
+  range.dataValidation.rule = textLengthZero;
 
-    range.dataValidation.prompt = {
-      message: "This is a protected field and not user editable.",
-      showPrompt: true,
-      title: "No entry allowed."
-    };
-    range.dataValidation.errorAlert = {
-      message: "Sorry, this is a protected field",
-      showAlert: true,
-      style: "Stop",
-      title: "No entry allowed"
-    };
-  }
+  range.dataValidation.prompt = {
+    message: "This is a protected field and not user editable.",
+    showPrompt: true,
+    title: "No entry allowed."
+  };
+  range.dataValidation.errorAlert = {
+    message: "Sorry, this is a protected field",
+    showAlert: true,
+    style: "Stop",
+    title: "No entry allowed"
+  };
 
 }
 
@@ -1261,36 +915,33 @@ function protectColumn(sheet, columnNumber, rowLength, bgColor, name) {
 // @param: bgColor - string color to set on background as hex code (eg '#ffffff')
 // @param: name - string description for the protected range
 function protectCell(sheet, col, row, bgColor, name) {
-  if (IS_GOOGLE) {
-  } else {
-    var cellRange = sheet.getCell(row + 1, col);
+  var cellRange = sheet.getCell(row + 1, col);
 
-    // set the background color
-    cellRange.set({ format: { fill: { color: bgColor } } });
+  // set the background color
+  cellRange.set({ format: { fill: { color: bgColor } } });
 
-    // now we can add data validation
-    // the easiest hack way to not allow any entry into the cell is to make sure its text length can only be zero
-    cellRange.dataValidation.clear();
-    var textLengthZero = {
-      textLength: {
-        formula1: 0,
-        operator: Excel.DataValidationOperator.equalTo
-      }
-    };
-    cellRange.dataValidation.rule = textLengthZero;
+  // now we can add data validation
+  // the easiest hack way to not allow any entry into the cell is to make sure its text length can only be zero
+  cellRange.dataValidation.clear();
+  var textLengthZero = {
+    textLength: {
+      formula1: 0,
+      operator: Excel.DataValidationOperator.equalTo
+    }
+  };
+  cellRange.dataValidation.rule = textLengthZero;
 
-    cellRange.dataValidation.prompt = {
-      message: name,
-      showPrompt: true,
-      title: "Protected Field."
-    };
-    cellRange.dataValidation.errorAlert = {
-      message: name,
-      showAlert: true,
-      style: "Stop",
-      title: "Protected Field."
-    };
-  }
+  cellRange.dataValidation.prompt = {
+    message: name,
+    showPrompt: true,
+    title: "Protected Field."
+  };
+  cellRange.dataValidation.errorAlert = {
+    message: name,
+    showAlert: true,
+    style: "Stop",
+    title: "Protected Field."
+  };
 
 }
 
@@ -1300,33 +951,30 @@ function protectCell(sheet, col, row, bgColor, name) {
 // @param: bgColor - string color to set on background as hex code (eg '#ffffff')
 // @param: name - string description for the protected range
 function protectRow(sheet, colSize, startRow, endRow, bgColor, name) {
-  if (IS_GOOGLE) {
-  } else {
-    var rowRange = sheet.getRangeByIndexes(startRow + 1, 0, endRow - startRow, colSize);
-    // set the background color
-    rowRange.set({ format: { fill: { color: bgColor } } });
-    // now we can add data validation
-    // the easiest hack way to not allow any entry into the cell is to make sure its text length can only be zero
-    rowRange.dataValidation.clear();
-    var textLengthZero = {
-      textLength: {
-        formula1: 0,
-        operator: Excel.DataValidationOperator.equalTo
-      }
-    };
-    rowRange.dataValidation.rule = textLengthZero;
-    rowRange.dataValidation.prompt = {
-      message: name,
-      showPrompt: true,
-      title: "Protected Field."
-    };
-    rowRange.dataValidation.errorAlert = {
-      message: name,
-      showAlert: true,
-      style: "Stop",
-      title: "Protected Field."
-    };
-  }
+  var rowRange = sheet.getRangeByIndexes(startRow + 1, 0, endRow - startRow, colSize);
+  // set the background color
+  rowRange.set({ format: { fill: { color: bgColor } } });
+  // now we can add data validation
+  // the easiest hack way to not allow any entry into the cell is to make sure its text length can only be zero
+  rowRange.dataValidation.clear();
+  var textLengthZero = {
+    textLength: {
+      formula1: 0,
+      operator: Excel.DataValidationOperator.equalTo
+    }
+  };
+  rowRange.dataValidation.rule = textLengthZero;
+  rowRange.dataValidation.prompt = {
+    message: name,
+    showPrompt: true,
+    title: "Protected Field."
+  };
+  rowRange.dataValidation.errorAlert = {
+    message: name,
+    showAlert: true,
+    style: "Stop",
+    title: "Protected Field."
+  };
 }
 
 
@@ -1337,19 +985,13 @@ function protectRow(sheet, colSize, startRow, endRow, bgColor, name) {
 // @param: bgColor - string color to set on background as hex code (eg '#ffffff')
 function hideColumn(sheet, columnNumber, rowLength, bgColor) {
   // only for google as cannot protect individual cells easily in Excel
-  if (IS_GOOGLE) {
+  var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
 
-    sheet.hideColumns(columnNumber);
+  // set the background color
+  range.set({ format: { fill: { color: bgColor } } });
 
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
-
-    // set the background color
-    range.set({ format: { fill: { color: bgColor } } });
-
-    //hide the column
-    range.columnHidden = true;
-  }
+  //hide the column
+  range.columnHidden = true;
 }
 
 // change a specific column background color
@@ -1359,17 +1001,11 @@ function hideColumn(sheet, columnNumber, rowLength, bgColor) {
 // @param: bgColor - string color to set on background as hex code (eg '#ffffff')
 function changeColorColumn(sheet, columnNumber, rowLength, bgColor) {
   // only for google as cannot protect individual cells easily in Excel
-  if (IS_GOOGLE) {
+  var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
 
-    sheet.hideColumns(columnNumber);
+  // set the background color
+  range.set({ format: { fill: { color: bgColor } } });
 
-  } else {
-    var range = sheet.getRangeByIndexes(1, columnNumber - 1, rowLength, 1);
-
-    // set the background color
-    range.set({ format: { fill: { color: bgColor } } });
-
-  }
 }
 
 // resets backgroung colors to its original - used before a GET command
@@ -1537,67 +1173,63 @@ async function sendToSpira(model, fieldTypeEnums) {
 
 
   // 1. get the active spreadsheet and first sheet
-  if (IS_GOOGLE) {
-    //to do
-  } else {
 
-    return await Excel.run({ delayForCellEdit: true }, function (context) {
-      var sheet = context.workbook.worksheets.getActiveWorksheet(),
-        sheetRange = sheet.getRangeByIndexes(1, 0, EXCEL_MAX_ROWS, fields.length);
-      sheet.load("name");
-      sheetRange.load("values");
+  return await Excel.run({ delayForCellEdit: true }, function (context) {
+    var sheet = context.workbook.worksheets.getActiveWorksheet(),
+      sheetRange = sheet.getRangeByIndexes(1, 0, EXCEL_MAX_ROWS, fields.length);
+    sheet.load("name");
+    sheetRange.load("values");
 
-      return new Promise(function (resolve, reject) {
-        context.sync()
-          .then(function () {
-            if (sheet.name == requiredSheetName) {
-              var sheetData = sheetRange.values;
+    return new Promise(function (resolve, reject) {
+      context.sync()
+        .then(function () {
+          if (sheet.name == requiredSheetName) {
+            var sheetData = sheetRange.values;
 
-              //clear all the comments from possible last executions
-              resetComments(model, sheetData, context).then(function () {
+            //clear all the comments from possible last executions
+            resetComments(model, sheetData, context).then(function () {
 
-                //Clear error messages and comments from the fields, if any
-                sheetData = clearErrorMessages(sheetData);
-                //First, send the artifact entries for Spira
-                var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
+              //Clear error messages and comments from the fields, if any
+              sheetData = clearErrorMessages(sheetData);
+              //First, send the artifact entries for Spira
+              var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
 
-                //Check if the data can actually be sent to Spira
-                var preCheckLog = preCheckData(entriesForExport, model);
-                //only proceed if there's no data pre-validation errors
-                if (!preCheckLog.globalFailureStatus) {
-                  var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
+              //Check if the data can actually be sent to Spira
+              var preCheckLog = preCheckData(entriesForExport, model);
+              //only proceed if there's no data pre-validation errors
+              if (!preCheckLog.globalFailureStatus) {
+                var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
 
-                  return sendExportEntriesExcel(entriesForExport, '', model, fieldTypeEnums, fields, artifact, '').then(function (response) {
-                    entriesLog = response;
+                return sendExportEntriesExcel(entriesForExport, '', model, fieldTypeEnums, fields, artifact, '').then(function (response) {
+                  entriesLog = response;
 
-                    return sendExportEntriesExcel('', extraEntriesForExport, model, fieldTypeEnums, fields, artifact, entriesLog.associations);
-                  }).then(function (responseExtra) {
-                    extraEntriesLog = responseExtra;
-                  }).catch(function (err) {
-                    reject()
-                  }).finally(function () {
-                    resolve(updateSheetWithExportResults(entriesLog, extraEntriesLog, null, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context))
-                  })
+                  return sendExportEntriesExcel('', extraEntriesForExport, model, fieldTypeEnums, fields, artifact, entriesLog.associations);
+                }).then(function (responseExtra) {
+                  extraEntriesLog = responseExtra;
+                }).catch(function (err) {
+                  reject()
+                }).finally(function () {
+                  resolve(updateSheetWithExportResults(entriesLog, extraEntriesLog, null, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context))
+                })
 
-                }
-                else {
-                  //data pre-validation checks failed
-                  resolve(updateSheetWithExportResults(null, null, preCheckLog, entriesForExport, null, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context));
-                }
-              });
-            }
-            else {
-              var log = {
-                status: STATUS_ENUM.wrongSheet
-              };
-              return log;
-            }
-          })
-          .catch();
-      })
+              }
+              else {
+                //data pre-validation checks failed
+                resolve(updateSheetWithExportResults(null, null, preCheckLog, entriesForExport, null, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context));
+              }
+            });
+          }
+          else {
+            var log = {
+              status: STATUS_ENUM.wrongSheet
+            };
+            return log;
+          }
+        })
         .catch();
     })
-  }
+      .catch();
+  })
 }
 
 
@@ -1617,13 +1249,6 @@ function preCheckData(entriesForExport, model) {
   };
   var failedIds = [],
     notRunIds = [];
-
-  // 1. Fist verification: Actual Result
-  // every non-success status must have an actual result
-
-  //2. Second verification: Execution Status
-  //  In a Test Case, having a 'Not Run' exec. status is only acceptable
-  // when there's at leats one non-success Test Step
 
   //populating the failingIds and notRunIds arrays, based on model
 
@@ -1648,16 +1273,17 @@ function preCheckData(entriesForExport, model) {
   entriesForExport.forEach(function (item) {
     //checking every Test Case:
     //is there any 'Not Run' Test Step in it?
-    var isNoRun = false;
+    var hasNotRunSteps = false;
     //is there any non-success Test Step in it?
-    var isFailure = false;
+    var hasFailedSteps = false;
     //getting every Test Step
     item[params.specialFields.testRunStepsField].forEach(function (subItem) {
       if (failedIds.includes(subItem[params.specialFields.executionStatusField])) {
-        //if the Test Step failed....
-        isFailure = true;
+        //if the Test Step failed and does not have an Actual Result, we must flag it!
+        hasFailedSteps = true;
         if (!subItem[params.specialFields.preCheckField1]) {
-          //and does not have an Actual Result, we must flag it! (1st ver.)
+          // 1. Fist verification: Actual Result
+          // every non-success status must have an actual result
           log.globalFailureStatus = true;
           subItem.FailingCondition = params.preCheckEnums.actualResult;
           //if we have a Test Set ID in the parent (TC), also add this to the Test Step object
@@ -1671,13 +1297,15 @@ function preCheckData(entriesForExport, model) {
         }
       } else if (notRunIds.includes(subItem[params.specialFields.executionStatusField])) {
         //flag if it is a non-run
-        isNoRun = true;
+        hasNotRunSteps = true;
       }
 
     });
-    //if the Test Case is NoRun and non-failure status, we must flag it! (2nd ver.)
-
-    if (isNoRun && !isFailure) {
+    //if the Test Case is NoRun and non-failure status, we must flag it!
+    //2. Second verification: Execution Status
+    //  In a Test Case, having a 'Not Run' exec. status is only acceptable
+    // when there's at leats one non-success Test Step
+    if (hasNotRunSteps && !hasFailedSteps) {
       log.globalFailureStatus = true;
       item.FailingCondition = params.preCheckEnums.executionStatus;
       log.artifacts.push(item);
@@ -1962,8 +1590,8 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
             //if we had an execution status pre-checking failure, log it to the TC cell
             if (item[params.specialFields.standardShellField] == value && item.FailingCondition == params.preCheckEnums.executionStatus) {
               //since we can have duplicate values in the sheet, we need an extra check
-              if ((!item[params.specialFields.secondaryShellField] && sheetData[row][2] == '') ||
-                (item[params.specialFields.secondaryShellField] && sheetData[row][2] != '')) {
+              if ((!item[params.specialFields.secondaryShellField] && sheetData[row][TX_ID_COLUMN_INDEX] == '') ||
+                (item[params.specialFields.secondaryShellField] && sheetData[row][TX_ID_COLUMN_INDEX] != '')) {
                 var checkingFieldNote = 'Invalid Execution Statuses: This TestCase contains an invalid execution statuses combination. For further information, please refer to the documentation.';
                 addCellComment(cellRange, model.colors.warning, comments, checkingFieldNote);
               }
@@ -2158,13 +1786,13 @@ function setFeedbackBgColor(cell, error, field, fieldTypeEnums, artifact, colors
 // @return: boolean that represents if the giver row is or is not part of a TestSet
 function IsTestSet(sheetData, row) {
   //looking back for a Test Case header
-  for (var i = row-1; i >= 0; i--) {
-    if (sheetData[i][0] != '') {
+  for (var i = row - 1; i >= 0; i--) {
+    if (sheetData[i][TC_ID_COLUMN_INDEX] != '') {
       //this is a Test Case header -> we need to check if this has a Test Set ID
-      if(sheetData[i][2] != ''){
+      if (sheetData[i][TX_ID_COLUMN_INDEX] != '') {
         return true;
       }
-      else{
+      else {
         return false;
       }
     }
@@ -2256,76 +1884,72 @@ function manageSendingToSpira(entry, user, projectId, artifact, fields, fieldTyp
     };
 
   // send object to relevant artifact post service
-  if (IS_GOOGLE) {
-    //to do
-  } else {
-    //Excel
-    if (artifact.id == params.artifactEnums.testRuns) {
-      return putArtifactToSpira(entry, user, projectId, artifactTypeIdToSend, parentId)
-        .then(function (response) {
-          var errorStatus = response.error;
-          output.fromSpira = response.text;
 
-          if (!errorStatus) {
-            // get the id/subType id of the updated artifact
-            var artifactIdField = getIdFieldName(fields, fieldTypeEnums, entry.isSubType);
-            //just repeat the id - it's the same 
-            output.newId = entry[artifactIdField];
-            // repeats the output parent ID only if the artifact has a subtype and this entry is NOT a subtype
-            if (artifact.hasSubType && !entry.isSubType) {
-              output.parentId = parentId;
-            }
-            //getting the resultId field
-            var artifactKeyField = params.specialFields.standardResultField;
-            var jsonResponse = JSON.parse(response.text);
-            output.resultId = jsonResponse[0][artifactKeyField];
-            return output;
+  if (artifact.id == params.artifactEnums.testRuns) {
+    return putArtifactToSpira(entry, user, projectId, artifactTypeIdToSend, parentId)
+      .then(function (response) {
+        var errorStatus = response.error;
+        output.fromSpira = response.text;
 
-          }
-        })
-        .catch(function (error) {
-          //we have an error - so set the flag and the message
-          output.error = true;
-          if (error) {
-            output.errorMessage = error;
-          } else {
-            output.errorMessage = "update attempt failed";
-          }
-
-          // reset the parentId if we are not on a subType - to make sure subTypes are not added to the wrong parent
+        if (!errorStatus) {
+          // get the id/subType id of the updated artifact
+          var artifactIdField = getIdFieldName(fields, fieldTypeEnums, entry.isSubType);
+          //just repeat the id - it's the same 
+          output.newId = entry[artifactIdField];
+          // repeats the output parent ID only if the artifact has a subtype and this entry is NOT a subtype
           if (artifact.hasSubType && !entry.isSubType) {
-            output.parentId = 0;
+            output.parentId = parentId;
           }
+          //getting the resultId field
+          var artifactKeyField = params.specialFields.standardResultField;
+          var jsonResponse = JSON.parse(response.text);
+          output.resultId = jsonResponse[0][artifactKeyField];
           return output;
-        });
-    } else if (artifact.id == params.artifactEnums.incidents) {
-      return postArtifactToSpira(entry, user, projectId, artifactTypeIdToSend)
-        .then(function (response) {
-          var errorStatus = response.error;
-          output.fromSpira = response.text;
-          if (!errorStatus) {
-            var artifactKeyField = params.specialFields.secondaryResultField;
-            var jsonResponse = JSON.parse(response.text);
-            output.resultId = jsonResponse[artifactKeyField];
-            return output;
-          }
-        })
-        .catch(function (error) {
-          //we have an error - so set the flag and the message
-          output.error = true;
-          if (error) {
-            output.errorMessage = error;
-          } else {
-            output.errorMessage = "incident creation attempt failed";
-          }
 
-          // reset the parentId if we are not on a subType - to make sure subTypes are not added to the wrong parent
-          if (artifact.hasSubType && !entry.isSubType) {
-            output.parentId = 0;
-          }
+        }
+      })
+      .catch(function (error) {
+        //we have an error - so set the flag and the message
+        output.error = true;
+        if (error) {
+          output.errorMessage = error;
+        } else {
+          output.errorMessage = "update attempt failed";
+        }
+
+        // reset the parentId if we are not on a subType - to make sure subTypes are not added to the wrong parent
+        if (artifact.hasSubType && !entry.isSubType) {
+          output.parentId = 0;
+        }
+        return output;
+      });
+  } else if (artifact.id == params.artifactEnums.incidents) {
+    return postArtifactToSpira(entry, user, projectId, artifactTypeIdToSend)
+      .then(function (response) {
+        var errorStatus = response.error;
+        output.fromSpira = response.text;
+        if (!errorStatus) {
+          var artifactKeyField = params.specialFields.secondaryResultField;
+          var jsonResponse = JSON.parse(response.text);
+          output.resultId = jsonResponse[artifactKeyField];
           return output;
-        });
-    }
+        }
+      })
+      .catch(function (error) {
+        //we have an error - so set the flag and the message
+        output.error = true;
+        if (error) {
+          output.errorMessage = error;
+        } else {
+          output.errorMessage = "incident creation attempt failed";
+        }
+
+        // reset the parentId if we are not on a subType - to make sure subTypes are not added to the wrong parent
+        if (artifact.hasSubType && !entry.isSubType) {
+          output.parentId = 0;
+        }
+        return output;
+      });
   }
 }
 
@@ -2356,7 +1980,7 @@ function createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, arti
       for (var i = 0; i < sheetData[rowToPrep].length; i++) {
 
         //1. Make sure this is a Test Step
-        if (sheetData[rowToPrep][0] == '-1' || sheetData[rowToPrep][0] == '') {
+        if (sheetData[rowToPrep][TC_ID_COLUMN_INDEX] == '-1' || sheetData[rowToPrep][TC_ID_COLUMN_INDEX] == '') {
 
           if (fields[i].type == fieldTypeEnums.subId) {
             parentId = sheetData[rowToPrep][i];
@@ -2788,7 +2412,7 @@ function createEntryFromRow(index, rows, model, fieldTypeEnums, lastIndentPositi
     var tsObject = {
       TestRunSteps: []
     }
-    while (rows[localIndex][0] == '-1') { //while we have TestSteps
+    while (rows[localIndex][TC_ID_COLUMN_INDEX] == '-1') { //while we have TestSteps
       var singleTs = [];
       //2.1 We need to turn an array of TS values in the row into a validated object
       for (var j = 0; j < rows[localIndex].length; j++) {
@@ -3016,7 +2640,6 @@ function getFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
     sheet.load("name");
     sheetRange.load("values");
     var requiredSheetName = model.currentArtifact.name + ", PR-" + model.currentProject.id;
-
     return context.sync()
       .then(function () {
         // only get the data if we are on the right sheet - the one with the template loaded on it
@@ -3351,7 +2974,7 @@ function processDataFromSpiraExcel(artifacts, model, fieldTypeEnums) {
     // 7. Make specific cells read-only 
     artifactsAsCells.forEach(function (row, rowCounter) {
 
-      var isTestCase = (row[0] != '' && row[0] != '-1');
+      var isTestCase = (row[TC_ID_COLUMN_INDEX] != '' && row[TC_ID_COLUMN_INDEX] != '-1');
 
       row.forEach(function (col, colCounter) {
         if (isTestCase) {
