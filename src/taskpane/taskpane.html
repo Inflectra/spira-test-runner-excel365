@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SpiraPlan Test Runner Tool</title>
+
+
+    <!-- Office JavaScript API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/superagent@5.1.0/dist/superagent.min.js"></script>
+
+    <!-- For more information on Office UI Fabric, visit https://developer.microsoft.com/fabric. -->
+    <link rel="stylesheet"
+        href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-core/10.0.0/css/fabric.min.css" />
+    <link rel="stylesheet"
+        href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-js/1.2.0/css/fabric.components.min.css" />
+
+    <!-- Plugin specific files -->
+    <link href="taskpane.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body class="ms-font-m ms-welcome ms-Fabric">
+    <!--This is the HTML that the user sees when the app launched and the sidebar is opened. -->
+    <!-- appscript: `< ?!= include(X)? >` are template inserts for modularity -->
+    <!-- appscript: and the entire document will be bundled together with inline CSS and JavaScript on deployment -->
+
+    <header class="header">
+        <img src="https://files.inflectra.com/office365/TestRunner/assets/icon-32.png" class="header-logo">
+        <h3 class="header-heading">SpiraPlan Test Runner Tool</h3>
+    </header>
+
+
+    <!--auth page-->
+    <div class="panel" id="panel-auth">
+
+        <p class="well">
+            Learn how to use this app via the <a id="lnk-help-login" href="#">mini help</a>, or read our <a
+                target="_blank"
+                href="http://spiradoc.inflectra.com/Migration-and-Integration/Importing-from-Microsoft-Excel-(Office365)/">full
+                documentation</a>.
+        </p>
+
+        <h3 class="mt-md mb-0">1. Connect to your Spira app</h3>
+        <ul class="form">
+            <li class="form-pair">
+                <label class="form-label ms-Label" for="input-url">
+                    Spira URL:
+                </label>
+                <input class="form-input" id="input-url" name="URL" placeholder="https://<your-site-name>.com"
+                    type="text" />
+            </li>
+            <li class="form-pair">
+                <label class="form-label ms-Label" for="input-userName">
+                    User Name:
+                </label>
+                <input class="form-input" id="input-userName" name="user-name" placeholder="User Name" type="text" />
+            </li>
+            <li class="form-pair">
+                <label class="form-label ms-Label" for="input-password">
+                    RSS Token:
+                </label>
+                <input class="form-input" id="input-password" name="password" placeholder="{Your-RSS-Token}"
+                    type="password" />
+            </li>
+        </ul>
+
+        <div class="mt-md">
+            <button class="action ms-Button ms-Button--primary" id="btn-login"
+                title="Login using details filled out above" type="button">
+                Log In
+            </button>
+            <button class="ms-Button ms-Button--default" id="btn-help-login" title="View help screens" type="button">
+                Help
+            </button>
+
+            <!-- Dev mock login data button. For developement only -->
+            <button class="hidden ms-Button ms-Button--default" id="btn-dev"
+                title="Click to load login screen with dev details" type="button">
+                Dev
+            </button>
+        </div>
+
+        <p class="mt-md mb-0">
+            <small>
+                Don't use SpiraPlan? Get a demo, purchase or learn more about SpiraPlan <a target="_blank"
+                    href="https://www.inflectra.com/Trial/SpiraPlan.aspx">here</a>.
+            </small>
+        </p>
+    </div>
+
+    <!--main screen-->
+    <div class="panel offscreen" id="panel-main">
+        <p class="secondary" id="js--loggedInAs-main">
+        </p>
+
+        <h3 id="main-heading-fromSpira">2. Prepare to get Test Runs from Spira</h3>
+        <h3 id="main-heading-toSpira">3. Prepare to send data to Spira</h3>
+
+        <div id="main-guide-1">
+            <p id="main-guide-1-fromSpira">a. Choose which product to get the data</p>
+        </div>
+        <ul class="form">
+            <li class="form-pair">
+                <label class="form-label" for="select-product">
+                    Products:
+                </label>
+                <select class="form-input" id="select-product">
+                    <!--aysnc populated -->
+                </select>
+        </ul>
+
+
+        <p class="ma-0 form-label pale" style="visibility: hidden" id="message-fetching-data">
+            Fetching the data needed...
+        </p>
+
+        <div>
+            <p id="main-guide-2" class="pale">
+                b. Start the data transfer with Spira
+            </p>
+            <button class="action ms-Button ms-Button--primary" disabled="true" id="btn-fromSpira" type="button"
+                title="Get data for the specified artifact from SpiraPlan">
+                Get from Spira
+            </button>
+        </div>
+
+        <div class="mt-md pale" id="checkboxStatus">
+
+            <input type="checkbox" id="chkLastStatus" name="chkLastStatusMain" checked>
+            <label for="chkLastStatusMain" id='chkLastStatusMain'> Get Last Execution Status </label>
+            <div class="circleHelp">
+                <p>?</p>
+            </div>
+            <div class="helpBox">This option allows you to see the last Execution Status of each Test Step in the
+                spreadsheet.</div>
+        </div>
+
+        <div>
+            <p id="main-guide-3" class="pale">
+                c. Send the data to Spira
+            </p>
+            <button class="ms-Button ms-Button--default" disabled="true" id="btn-updateToSpira" type="button"
+                title="Send the data to Spira, saving the new Test Runs according to the worksheet contents">
+                Send to Spira
+            </button>
+        </div>
+
+        <div class="btn-group mt-lg">
+            <button class="ms-Button ms-Button--default" id="btn-main-back"
+                title="Go back to choose to send data to or get data from Spira" type="button">
+                Back
+            </button>
+            <button class="ms-Button ms-Button--default" id="btn-help-main" title="View help screen" type="button">
+                Help
+            </button>
+            <button class="ms-Button ms-Button--default" id="btn-logout"
+                title="Logout of addon (no data on sheet is affected)" type="button">
+                Logout
+            </button>
+        </div>
+    </div>
+
+
+
+    <!--help page-->
+    <div class="panel offscreen" id="panel-help">
+        <!-- help button and module for help page -->
+        <button class="ms-Button ms-Button--default" id="btn-help-back" type="button">
+            Back
+        </button>
+
+        <h3>Quick Help Guide</h3>
+        <p class="mt-0">For more information see our <a target="_blank"
+                href="http://spiradoc.inflectra.com/Unit-Testing-Integration/Spreadsheet-Test-Runner/">documentation.</a>
+        </p>
+
+        <div class="flex" id='help-header'>
+            <button class="btn-help ms-Button ms-Button--default" id="btn-help-section-login"
+                title="Help with the login screen" type="button">
+                Login
+            </button>
+            <button class="btn-help ms-Button ms-Button--default" id="btn-help-section-getting"
+                title="Get Test Cases and Test Sets + Test Steps assigned to you from Spira" type="button">
+                Get
+            </button>
+            <button class="btn-help ms-Button ms-Button--default" id="btn-help-section-sending"
+                title="Send the spreadsheet data back to Spira" type="button">
+                Send
+            </button>
+        </div>
+
+        <div id="help-section-login" class="help-section hidden">
+            <h4>1. Connect to your Spira app</h4>
+            <p id="help-connection-google">You can use this add-on with SpiraTest®, SpiraTeam®, or SpiraPlan®. It works
+                with any cloud Spira app. Any on premise Spira needs to be accessible over the internet.</p>
+            <p id="help-connection-excel">You can use this add-on with SpiraTest®, SpiraTeam®, or SpiraPlan®. If you are
+                using Excel in the browser, your Spira app needs to be accessible over the internet.</p>
+            <ol class="list">
+                <li>
+                    <p><b>Enter your SpiraTeam URL</b></p>
+                    <small>Use the web address you use to access Spira in your browser. This is usually of the form
+                        'http://(company).spiraservice.net'. Make sure you remove any suffixes from the address (e.g.
+                        Default.aspx or "/")</small>
+                </li>
+                <li>
+                    <p><b>Enter your username</b></p>
+                    <small>
+                        This is the exact same username you use to log in to Spira. (Not Case Sensitive)
+                    </small>
+                </li>
+                <li>
+                    <p><b>Enter your RSS token</b></p>
+                    <small>You can find or generate this from your user profile page inside Spira - <a
+                            href="http://spiradoc.inflectra.com/HowTo-Guides/Users-profile-management/#how-to-get-or-make-your-rss-token-or-api-key">read
+                            how to do so here</a>. Make sure to include
+                        the curly braces - {ExampleRSS}</small>
+                </li>
+            </ol>
+        </div>
+
+
+
+
+        <div id="help-section-getting" class="help-section hidden">
+            <h4>2. Getting data from Spira</h4>
+            <p>You can use this add-in to execute test cases while disconnected from your network and then upload the
+                results to SpiraTeam as a single batch.</p>
+            <p>First, you'll need to get the Test Cases/Test Sets assigned to you from Spira. Start providing your
+                credentials,
+                then optionally check the box 'Get Last Execution Status', which
+                will populate the column 'Execution Status' of each Test Step with its last Test Run status.</p>
+            <p>Then, select a product to retrieve the data from and
+                click on 'Get from Spira'. You should see the Test Cases and their Test Steps on the Spreadsheet. Please
+                note that the spreadsheet contains only Test Cases
+                with Test Steps and Test Sets type 'Manual' assigned to you. The spreadsheet template has a few
+                different columns:</p>
+            </p>
+            <ul class="list">
+                <li>
+                    <p>
+                        <b>Case ID and Step ID: </b>
+                        <small>Respectively, the IDs of the Test Case and the Test Step in Spira. You can't edit this
+                            field.</small>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Test Case Name: </b>
+                        <small>The name of the Test Case in Spira.</small>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Associated Release: </b>
+                        <small>The release associated with the Test Case in Spira.</small>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Set ID: </b>
+                        <small>If the Test Case came from a Test Step assigned to you, you should see its ID in this
+                            field. Otherwise, it will remain blank.</small>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Set Case Unique ID: </b>
+                        <small>This is the Test-Set, Test Case unique ID i.e.: the ID of the Test Case inside a Test Set
+                            in Spira.</small>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Test Step Description/Test Step Expected Result/Test Step Sample Data: </b>
+                        <small>This field brings the text description/expected result/sample data of the Test Step in
+                            Spira.</small>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        <b>Execution Status: </b>
+                        <small>The execution status of that test step. It should be selected drop the dropdown list.
+                            This field will be sent to Spira. </small>
+                    </p>
+                </li>
+
+                <li>
+                    <p>
+                        <b>Actual Result: </b>
+                        <small>The long description of the actual result experienced during testing. If you want it
+                            formatted, you need to add HTML tags such as &lt;b&gt; for bold. This field will be sent to
+                            Spira.</small>
+                    </p>
+                </li>
+
+                <li>
+                    <p>
+                        <b>Incident Name: </b>
+                        <small>If you want to log an incident associated with the test failure, enter the name of the
+                            incident here. The description of the incident will be pre-populated with the Test Step
+                            Description, Expected Result, and Actual Result.</small>
+                    </p>
+                </li>
+            </ul>
+            <p>In the spreadsheet, you can see different cell colors. Each of them has a different meaning: </p>
+                <p> 
+                    <b style="color:gray">Gray: </b>
+                    <small>means you can't edit the cell, it's a protected field.</small>
+                </p>
+                <p> 
+                    <b style="color:green">Green: </b>
+                    <small>means you are encouraged to populate this cell, as the changes will reflect in Spira.</small>
+                </p>
+                <p> 
+                    <b style="color:black">White: </b>
+                    <small>means it is an optional field.</small>
+                </p>
+                <p> 
+                    <b style="color:red">Red: </b>
+                    <small>means there was an error in the artifact. Hover the cell to read the error message.</small>
+                </p>
+        </div>
+
+        <div id="help-section-sending" class="help-section hidden">
+            <h4>3. Send the data back to Spira</h4>
+
+            <p>Once you have finished testing and populating the green/white fields of the spreadsheet,
+                make sure you are connected to the internet, then click on the 'Send to Spira' button to 
+                have the Add-In connect with SpiraTeam and upload the data to the server. </p>
+            <p>If everything ends up fine, you should see a comment on each Test Case ID cell containing 
+                the just-created Test Run ID (and also in the Incidents column, if any). If the add-in had 
+                any problem creating the Test Runs and/or Incidents in Spira, you should see red cells 
+                containing error messages as comments. In this case, review the data based on the provided 
+                instructions and try again.</p>
+                
+        </div>
+    </div>
+
+
+    <!-- warning page - ms excel only -->
+    <div class="panel offscreen" id="panel-confirm">
+        <p id="message-confirm"></p>
+        <button class="ms-Button ms-Button--default" id="btn-confirm-ok" type="button">
+            OK
+        </button>
+        <button class="ms-Button ms-Button--default" id="btn-confirm-cancel" type="button">
+            Cancel
+        </button>
+
+    </div>
+
+    <!-- footer -->
+    <footer class="footer">
+        <a href="https://www.inflectra.com" target="_blank">
+            <img src="https://files.inflectra.com/google/sheets/by_inflectra.png" class="footer-logo">
+        </a>
+    </footer>
+
+
+    <!--spinner-->
+    <div id='loader' class='loader-box hidden'>
+        <div class="loader"></div>
+    </div>
+</body>
+
+</html>
