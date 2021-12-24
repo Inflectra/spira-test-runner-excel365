@@ -13,9 +13,6 @@ var uiSelection = new tempDataStore();
 // if devmode enabled, set the required fields and show the dev button
 var devMode = true;
 
-//global flag for the Get Last TS run status check box
-var lastStatusMode = true;
-
 /*
 Global Variable to control if advanced options should be enabled to the user
 Up to know, the advanced features are :
@@ -82,9 +79,9 @@ Office.onReady(info => {
 function setDevStuff(devMode) {
   if (devMode) {
     document.getElementById("btn-dev").classList.remove("hidden");
-    model.user.url = "";
+    model.user.url = "https://internal-bruno.spiraservice.net/";
     model.user.userName = "administrator";
-    model.user.api_key = btoa("&api-key=" + encodeURIComponent("{}"));
+    model.user.api_key = btoa("&api-key=" + encodeURIComponent("{88C10992-22A6-47FD-B570-8A87624A8CBA}"));
 
     loginAttempt();
   }
@@ -120,16 +117,6 @@ function setEventListeners() {
   document.getElementById("btn-help-section-login").onclick = function () { showChosenHelpSection('login') };
   document.getElementById("btn-help-section-getting").onclick = function () { showChosenHelpSection('getting') };
   document.getElementById("btn-help-section-sending").onclick = function () { showChosenHelpSection('sending') };
-  document.getElementById("chkLastStatus").onclick = setLastStatus;
-}
-
-// switches the value of the global variable for the Advanced Mode
-function setLastStatus() {
-  if (document.getElementById('chkLastStatus').checked) {
-    lastStatusMode = true;
-  } else {
-    lastStatusMode = false;
-  }
 }
 
 // used to show or hide / hide / show a specific panel
@@ -525,17 +512,13 @@ function manageTemplateBtnState() {
           document.getElementById("btn-fromSpira").disabled = false;
           document.getElementById("main-guide-2").classList.add("pale");
           document.getElementById("main-guide-3").classList.remove("pale");
-          document.getElementById("checkboxStatus").classList.add("pale");
           document.getElementById("message-fetching-data").style.visibility = "hidden";
         }
         else {
           document.getElementById("btn-fromSpira").disabled = false;
-
           document.getElementById("message-fetching-data").style.visibility = "hidden";
           document.getElementById("main-guide-1").classList.add("pale");
           document.getElementById("main-guide-2").classList.remove("pale");
-          document.getElementById("checkboxStatus").classList.remove("pale");
-          document.querySelector(".circleHelp").classList.add("checked");
         }
 
         clearInterval(checkGetsSuccess);
@@ -594,7 +577,7 @@ function getFromSpiraAttempt() {
   if (model.isTemplateLoaded && !isModelDifferentToSelection()) {
     showLoadingSpinner();
     //call export function
-    msOffice.getFromSpiraExcel(model, params.fieldType, lastStatusMode)
+    msOffice.getFromSpiraExcel(model, params.fieldType)
       .then((response) => getFromSpiraComplete(response))
       .catch((error) => errorImpExp(error));
   } else {

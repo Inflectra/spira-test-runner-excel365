@@ -90,9 +90,9 @@ var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
     2: 'TestCaseId',
     7: 'TestCaseId'
   },
-  TC_ID_COLUMN_INDEX = 0,
-  TS__ID_COLUMN_INDEX = 1,
-  TX_ID_COLUMN_INDEX = 2;
+  TC_ID_COLUMN_INDEX = 1,
+  TS__ID_COLUMN_INDEX = 2,
+  TX_ID_COLUMN_INDEX = 3;
 
 /*
  * ======================
@@ -314,8 +314,9 @@ function getReleases(currentUser, projectId) {
 }
 
 
-function getArtifacts(user, projectId, artifactTypeId, startRow, numberOfRows, artifactId) {
+function getArtifacts(user, projectId, artifactTypeId, startRow, numberOfRows, artifactId, parentTypeId) {
   var fullURL = '';
+  var body = '';
   var response = null;
 
   switch (artifactTypeId) {
@@ -325,8 +326,16 @@ function getArtifacts(user, projectId, artifactTypeId, startRow, numberOfRows, a
       break;
     case ART_ENUMS.testSteps:
       if (artifactId) {
-        fullURL += API_PROJECT_BASE + projectId + "/test-cases/" + artifactId + "/test-steps?&";
-        response = fetcher(user, fullURL);
+        if (parentTypeId == ART_ENUMS.testSets) {
+          fullURL += API_PROJECT_BASE + projectId + '/test-runs/create/test_set/' + artifactId + '?';
+          body = "[" + artifactId + "]";
+          response = poster(body, user, fullURL);
+        }
+        else if (parentTypeId == ART_ENUMS.testCases) {
+          fullURL += API_PROJECT_BASE + projectId + '/test-runs/create' + '?';
+          body = "[" + artifactId + "]";
+          response = poster(body, user, fullURL);
+        }
       }
       break;
     case ART_ENUMS.testSets:
@@ -1089,18 +1098,18 @@ function clearErrorMessages(sheetData) {
     if (sheetData[rowToPrep].join("") === "") {
       break;
     } else {
-      //the error messages are placed always at the position 0 of each row
-      if (isNaN(sheetData[rowToPrep][0])) {
+      //the error messages are placed always at the position 1 of each row
+      if (isNaN(sheetData[rowToPrep][1])) {
         try {
-          sheetData[rowToPrep][0] = sheetData[rowToPrep][0].split(",")[0];
+          sheetData[rowToPrep][1] = sheetData[rowToPrep][1].split(",")[1];
         }
         catch (err) {
           //do nothing
         }
       }
       //also, add -1 as ID for blank (invalid) new PUT values
-      if (!sheetData[rowToPrep][0]) {
-        sheetData[rowToPrep][0] = "-1";
+      if (!sheetData[rowToPrep][1]) {
+        sheetData[rowToPrep][1] = "-1";
       }
 
     }
@@ -1111,39 +1120,38 @@ function clearErrorMessages(sheetData) {
 //Function that clear all the comments from the inicitial ID columns in the Spreadsheet
 //@param model - contains information related to the artifact we are working with
 async function resetComments(model, sheetData, context) {
-  // await Excel.run(async (ctx) => {
-  var fields = model.fields;
-  var sheet = context.workbook.worksheets.getActiveWorksheet();
-  var comments = context.workbook.comments;
+  try {
+    // await Excel.run(async (ctx) => {
+    var fields = model.fields;
+    var sheet = context.workbook.worksheets.getActiveWorksheet();
 
-  for (var rowToPrep = 0; rowToPrep < sheetData.length; rowToPrep++) {
-    // stop at the first row that is fully blank
-    if (sheetData[rowToPrep].join("") === "") {
-      break;
-    } else {
+    for (var rowToPrep = 0; rowToPrep < sheetData.length; rowToPrep++) {
+      // stop at the first row that is fully blank
+      if (sheetData[rowToPrep].join("") === "") {
+        break;
+      } else {
 
-      //remove any comments from previous interactions
-      for (var col = 0; col < fields.length; col++) {
-        if (col == 0 || col == 1) {
-          //only from the ID field
-          var cellRange = sheet.getCell(rowToPrep + 1, col);
-          //reset color to its original value
-          cellRange.set({ format: { fill: { color: model.colors.bgReadOnly } } });
-          //exclude any comment
-          try {
-            var comment = comments.getItemByCell(cellRange);
-            comment.delete();
-            await context.sync();
+        //remove any comments from previous interactions
+        for (var col = 0; col < fields.length; col++) {
+          if (col == 1 || col == 2) {
+            //only from the ID field
+            var cellRange = sheet.getCell(rowToPrep + 1, col);
+            //reset color to its original value
+            cellRange.set({ format: { fill: { color: model.colors.bgReadOnly } } });
           }
-          catch (err) {
-            //if there's no comment, do nothing
+          //reset messages from the comments column
+          if (fields[col].isComments) {
+            var cellRange = sheet.getCell(rowToPrep + 1, col);
+            cellRange.clear();
+            cellRange.set({ format: { fill: { color: model.colors.bgReadOnly } } });
+            await context.sync();
           }
         }
       }
     }
+  } catch (err) {
+    console.log("There was an error cleaning the spreadsheet: " + err);
   }
-  // });
-  //return context.sync();
 }
 
 
@@ -1166,7 +1174,6 @@ async function sendToSpira(model, fieldTypeEnums) {
 
   // 0. SETUP FUNCTION LEVEL VARS 
   var entriesLog, extraEntriesLog;
-
   var fields = model.fields,
     artifact = model.currentArtifact,
     requiredSheetName = model.currentArtifact.name + ", PR-" + model.currentProject.id;
@@ -1185,24 +1192,23 @@ async function sendToSpira(model, fieldTypeEnums) {
         .then(function () {
           if (sheet.name == requiredSheetName) {
             var sheetData = sheetRange.values;
-
             //clear all the comments from possible last executions
             resetComments(model, sheetData, context).then(function () {
-
               //Clear error messages and comments from the fields, if any
               sheetData = clearErrorMessages(sheetData);
               //First, send the artifact entries for Spira
               var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
-
+              console.log('entriesForExport');
+              console.dir(entriesForExport);
               //Check if the data can actually be sent to Spira
               var preCheckLog = preCheckData(entriesForExport, model);
+              console.log('preCheckLog');
+              console.dir(preCheckLog);
               //only proceed if there's no data pre-validation errors
               if (!preCheckLog.globalFailureStatus) {
                 var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
-
                 return sendExportEntriesExcel(entriesForExport, '', model, fieldTypeEnums, fields, artifact, '').then(function (response) {
                   entriesLog = response;
-
                   return sendExportEntriesExcel('', extraEntriesForExport, model, fieldTypeEnums, fields, artifact, entriesLog.associations);
                 }).then(function (responseExtra) {
                   extraEntriesLog = responseExtra;
@@ -1362,14 +1368,23 @@ function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact)
         // create entry used to populate all relevant data for this row
         entry = {};
 
+        console.log('rowChecks');
+        console.dir(rowChecks);
+
       // first check for errors
       var hasProblems = rowHasProblems(rowChecks);
+      console.log('hasProblems');
+      console.dir(hasProblems);
       if (hasProblems) {
         entry.validationMessage = hasProblems;
         // if error free determine what field filtering is required - needed to choose type/subtype fields if subtype is present
       } else {
         var fieldsToFilter = relevantFields(model.fields);
+        console.log('fieldsToFilter');
+        console.dir(fieldsToFilter);
         entry = createEntryFromRow(rowToPrep, sheetData, model, fieldTypeEnums, lastIndentPosition, fieldsToFilter);
+        console.log('entry');
+        console.dir(entry);
         // FOR SUBTYPE ENTRIES add flag on entry if it is a subtype
         if (entry && fieldsToFilter === FIELD_MANAGEMENT_ENUMS.subType) {
           entry.isSubType = true;
@@ -1379,6 +1394,8 @@ function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact)
       if (artifact.id == params.artifactEnums.testCases && entry.isSubType) {
         //if this is a testStep, check if the parent is valid
         var validParent = isValidParent(entriesForExport);
+        console.log('validParent');
+        console.dir(validParent);
         if (!validParent) {
           //if the parent is not valid, mark that as an error
           entry = {};
@@ -1416,7 +1433,6 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
       associations: []
     };
 
-
     // loop through objects to send and update the log
     async function sendSingleEntry(i) {
       //if we not have a parent ID yet, set the correct parentId artifact for subtypes (needed for POST URL)
@@ -1425,17 +1441,14 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
         //let the child object to hold the parent ID field
         entriesForExport[i][ART_PARENT_IDS[artifact.id]] = log.parentId;
       }
-
       await manageSendingToSpira(entriesForExport[i], model.user, model.currentProject.id, artifact, fields, fieldTypeEnums, log.parentId)
         .then(function (response) {
           var association = null;
-
           if (!response.error) {
             //get the association TestRunStepID - TestStepID
             association = getAssociationFromResponse(response.fromSpira);
             log.associations = [...log.associations, ...association];
           }
-
           // update the parent ID for a subtypes based on the successful API call
           if (artifact.hasSubType) {
             log.parentId = response.parentId;
@@ -1456,6 +1469,7 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
       if (!entriesForExport[i].skip) {
         if (!log.doNotContinue) {
           log = checkSingleEntryForErrors(entriesForExport[i], log, artifact);
+
           if (log.entries.length && log.entries[i] && log.entries[i].error) {
             // do nothing 
           } else {
@@ -1556,13 +1570,13 @@ function getAssociationFromResponse(response) {
 
 // 5. SET MESSAGES AND FORMATTING ON SHEET
 function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
-
   var extraFieldCounter = 0;
   var row = 0;
   var entriesCounter = 0;
-
+  var rowCounter = 0;
   // first handle cell formatting
   while (sheetData[row].join("") !== "") {
+    rowCounter ++;
     var rowBgColors = [],
       rowNotes = [],
       rowValues = [];
@@ -1574,18 +1588,18 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
         associationNote = null,
         value = sheetData[row][col];
       var cellRange = sheet.getCell(row + 1, col);
-      var comments = context.workbook.comments;
 
-      async function addCellComment(cellRange, bgColor, comments, checkingFieldNote) {
+      async function addCellComment(cellRange, bgColor, checkingFieldNote) {
         bgColor = model.colors.warning;
         cellRange.set({ format: { fill: { color: bgColor } } });
-        comments.add(cellRange, checkingFieldNote);
+        var subRange = sheet.getCell(row + 1, 0);
+        subRange.values = [[checkingFieldNote]];
       }
 
       //handling the pre-checking log
       if (preCheckingLog != null) {
         //checking if the TC failed
-        if (col == 0) {
+        if (col == 1) {
           preCheckingLog.artifacts.forEach(function (item) {
             //if we had an execution status pre-checking failure, log it to the TC cell
             if (item[params.specialFields.standardShellField] == value && item.FailingCondition == params.preCheckEnums.executionStatus) {
@@ -1593,12 +1607,12 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
               if ((!item[params.specialFields.secondaryShellField] && sheetData[row][TX_ID_COLUMN_INDEX] == '') ||
                 (item[params.specialFields.secondaryShellField] && sheetData[row][TX_ID_COLUMN_INDEX] != '')) {
                 var checkingFieldNote = 'Invalid Execution Statuses: This TestCase contains an invalid execution statuses combination. For further information, please refer to the documentation.';
-                addCellComment(cellRange, model.colors.warning, comments, checkingFieldNote);
+                addCellComment(cellRange, model.colors.warning, checkingFieldNote);
               }
             }
           });
         }
-        else if (col == 1) {
+        else if (col == 2) {
           //checking if the TS failed
           preCheckingLog.artifacts.forEach(function (item) {
             var isTestSet = IsTestSet(sheetData, row);
@@ -1608,7 +1622,7 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
               if ((!item[params.specialFields.secondaryShellField] && !isTestSet) ||
                 (item[params.specialFields.secondaryShellField] && isTestSet)) {
                 var checkingFieldNote = 'Missing Actual Result: This TestStep needs to have an Actual Result, since it failed.';
-                addCellComment(cellRange, model.colors.warning, comments, checkingFieldNote);
+                addCellComment(cellRange, model.colors.warning, checkingFieldNote);
               }
             }
           });
@@ -1630,13 +1644,17 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
             }
             else {
               //setting up the results comments for extra files (aka Incidents)
-              var comments = context.workbook.comments;
-              comments.add(cellRange, 'Spira Incident ID ' + extraEntriesLog.entries[extraFieldCounter].details.resultId);
+              try {
+                var subRange = sheet.getCell(row + 1, 0);
+                subRange.values = [['Success! Spira Incident ID ' + extraEntriesLog.entries[extraFieldCounter].details.resultId]];
+              } catch (err) {
+                console.log("There was a problem when adding a comment: " + err);
+              }
             }
           }
           extraFieldCounter++;
         }
-        else if (col == 0 && !fields[col].extraArtifact && (sheetData[row][col] != "" && sheetData[row][col] != "-1")) {
+        else if (col == 1 && !fields[col].extraArtifact && (sheetData[row][col] != "" && sheetData[row][col] != "-1")) {
           //we only log error info to the head row of each Test Run
           bgColor = setFeedbackBgColor(sheetData[row][col], entriesLog.entries[entriesCounter].error, fields[col], fieldTypeEnums, artifact, model.colors);
           value = setFeedbackValue(sheetData[row][col], entriesLog.entries[entriesCounter].error, fields[col], fieldTypeEnums, entriesLog.entries[entriesCounter].newId || "", null, col);
@@ -1644,12 +1662,16 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
 
           //setting up the results comments for Test Runs
           if (!entriesLog.entries[entriesCounter].error) {
-            var comments = context.workbook.comments;
-            comments.add(cellRange, 'Spira TestRun ID ' + entriesLog.entries[entriesCounter].details.resultId);
+            try {
+              var subRange = sheet.getCell(row + 1, 0);
+              subRange.values = [['Success! Spira TestRun ID ' + entriesLog.entries[entriesCounter].details.resultId]];
+            } catch (err) {
+              console.log("There was a problem when adding a comment: " + err);
+            }
           }
           entriesCounter++;
         }
-        else if (col == 0 && sheetData[row][col] == "-1") {
+        else if (col == 1 && sheetData[row][col] == "-1") {
           //clear internal values, so they are not displayed to the user
           value = '';
         }
@@ -1659,26 +1681,14 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
           note = null;
         }
 
-        if (extraFieldNote) {
-          //Handling Excel bug: Some versions does not accept adding comments. In these cases, we write the text in the cell
-          try {
-            var comments = context.workbook.comments;
-            comments.add(cellRange, extraFieldNote);
-          }
-          catch (err) {
-            value = sheetData[row][col] + ' - ' + extraFieldNote;
-          }
-        }
-
         if (bgColor) {
           cellRange.set({ format: { fill: { color: bgColor } } });
           bgColor = null;
         }
-        cellRange.values = [[value]];
+        //cellRange.values = [[value]];
         value = null;
         var returnLog = entriesLog;
       }
-
 
       var rowFirstCell = sheet.getCell(row + 1, 0);
       if (rowNotes.length) {
@@ -1688,6 +1698,15 @@ function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLo
     }
     row++;
   }
+  protectColumn(
+    sheet,
+    1,
+    rowCounter,
+    model.colors.bgReadOnly,
+    "Spira Log field"
+  );
+  var subRange = sheet.getRangeByIndexes(0,0,rowCounter,1);
+  subRange = setRangeBorders(subRange, model.colors.cellBorder);
   return context.sync().then(function () { return returnLog; });
 }
 
@@ -2217,7 +2236,7 @@ function relevantFields(fields) {
   var extraFields = [];
 
   fields.forEach(function (item) {
-    if (item.extraArtifact) {
+    if (item.extraArtifact || item.isComments) {
       extraFields.push(item.field);
     }
 
@@ -2243,7 +2262,7 @@ function createEntryFromRow(index, rows, model, fieldTypeEnums, lastIndentPositi
   var parentId = 0;
 
   //1. Make sure this is a Test Case
-  if (rows[index][0] != '-1') {
+  if (rows[index][1] != '-1') {
 
     //1.1 We need to turn an array of values in the row into a validated object
     for (var i = 0; i < rows[index].length; i++) {
@@ -2631,7 +2650,7 @@ function processSendToSpiraResponse(i, sentToSpira, entriesForExport, artifact, 
 // EXCEL SPECIFIC FUNCTION - handles getting paginated artifacts from Spira and displaying them in the UI
 // @param: model: full model object from client
 // @param: enum of fieldTypeEnums used
-function getFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
+function getFromSpiraExcel(model, fieldTypeEnums) {
   return Excel.run(function (context) {
     var fields = model.fields;
     var sheet = context.workbook.worksheets.getActiveWorksheet(),
@@ -2648,7 +2667,7 @@ function getFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
           resetSheet(model);
           //then, clear the background colors of the spreadsheet (in case we had any errors in the last run)
           resetSheetColors(model, fieldTypeEnums, sheetRange);
-          return getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode).then((response) => {
+          return getDataFromSpiraExcel(model, fieldTypeEnums).then((response) => {
             //error handling
             if (response == 'noData') {
               return operationComplete(STATUS_ENUM.noData, false);
@@ -2667,7 +2686,7 @@ function getFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
 // Get all the data we need from Spira, combining different API operations
 // @param: model - full model object from client
 // @param: fieldTypeEnums - enum of fieldTypes used
-async function getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
+async function getDataFromSpiraExcel(model, fieldTypeEnums) {
   // 1. get Test Cases from spira that are assigned to the logged user 
   var currentPage = 0;
   var artifacts = [];
@@ -2716,54 +2735,42 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
     }
   });
 
-  // 4. Get the Test Steps of the just-filtered Test Case
-  if (model.currentArtifact.hasSubType) {
-    // find the TC id field
-    var idFieldNameArray = model.fields.filter(function (field) {
-      return field.type === fieldTypeEnums.id;
-    });
+  //function called below in the foreach call
+  async function getArtifactSubs(art) {
+    await getArtifacts(
+      model.user,
+      art.ProjectId,
+      model.currentArtifact.subTypeId,
+      null,
+      null,
+      art[params.specialFields.standardShellField],
+      params.artifactEnums.testCases
+    ).then(function (response) {
+      // take action if we got any sub types back - ie if they exist for the specific artifact
+      if (response.body && response.body.length && response.body[0][params.specialFields.testRunStepsField]) {
+        var subTypeArtifactsWithMeta = response.body[0][params.specialFields.testRunStepsField].map(function (sub) {
+          sub.isSubType = true;
+          sub.parentId = art[params.specialFields.standardShellField];
 
-    //getting Test Steps
-    // if we have an id field, then we can find the id number for each TS in the array
-    if (idFieldNameArray && idFieldNameArray[0].field) {
-      //function called below in the foreach call
-      async function getArtifactSubs(art) {
-        await getArtifacts(
-          model.user,
-          art.ProjectId,
-          model.currentArtifact.subTypeId,
-          null,
-          null,
-          art[idFieldName]
-        ).then(function (response) {
-          // take action if we got any sub types back - ie if they exist for the specific artifact
-          if (response.body && response.body.length) {
-            var subTypeArtifactsWithMeta = response.body.map(function (sub) {
-              if (!isLastStatusMode) {
-                sub[params.specialFields.executionStatusField] = params.specialFields.standardNotRunId;
-              }
-              sub.isSubType = true;
-              sub.parentId = art[idFieldName];
-              return sub;
-            });
-            // now add the steps into the original object
-            artifactsWithSubTypes = artifactsWithSubTypes.concat(subTypeArtifactsWithMeta);
-          }
+          return sub;
         })
-      };
-
-      var idFieldName = idFieldNameArray[0].field;
-      var artifactsWithSubTypes = [];
-
-      for (var i = 0; i < artifacts.length; i++) {
-        artifactsWithSubTypes.push(artifacts[i]);
-        await getArtifactSubs(artifacts[i]);
+        // now add the steps into the original object
+        artifactsWithSubTypes = artifactsWithSubTypes.concat(subTypeArtifactsWithMeta);
       }
-      // update the original array (I know that mutation is bad, but it makes things easy here)
-      artifacts = artifactsWithSubTypes;
-    }
+
+    });
+  };
+
+  // 4. Get the Test Steps of the just-filtered Test Cases (via Shell)
+  var artifactsWithSubTypes = [];
+
+  for (var i = 0; i < artifacts.length; i++) {
+    artifactsWithSubTypes.push(artifacts[i]);
+    await getArtifactSubs(artifacts[i]);
   }
 
+  // update the original array (I know that mutation is bad, but it makes things easy here)
+  artifacts = artifactsWithSubTypes;
 
   /*
   5. At this point, we have TC+TS owned by the user. Now, we need to get those TC that came from TX owned by the user.
@@ -2782,6 +2789,7 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
         model.currentArtifact.SecondaryTypeId,
         startRow,
         GET_PAGINATION_SIZE,
+        null,
         null
       ).then(function (response) {
         // if we got a non empty array back then we have secondary Artifacts to process
@@ -2833,7 +2841,8 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
             model.currentArtifact.SecondaryTypeId,
             0,
             GET_PAGINATION_SIZE,
-            targetIds[i]
+            targetIds[i],
+            null
           ).then(function (response) {
             // if we got a non empty array back then we have artifacts to process
             if (response.body && response.body.length) {
@@ -2842,7 +2851,6 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
             }
           })
         }
-
         // 5.3 Finally, getting the Test Cases + Test Steps from the Test Sets
 
         currentPage = 0;
@@ -2895,7 +2903,7 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
             });
           }
 
-          //getting Test Steps
+          //getting Test Steps (via Shell)
           // if we have an id field, then we can find the id number for each artifact in the array
           if (idFieldNameArray && idFieldNameArray[0].field) {
             //function called below in the foreach call
@@ -2906,21 +2914,26 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
                 model.currentArtifact.subTypeId,
                 null,
                 null,
-                art[idFieldName]
+                art[params.specialFields.standardShellField],
+                params.artifactEnums.testCases
               ).then(function (response) {
                 // take action if we got any sub types back - ie if they exist for the specific artifact
-                if (response.body) {
-                  var subTypeArtifactsWithMeta = response.body.map(function (sub) {
+                // take action if we got any sub types back - ie if they exist for the specific artifact
+                if (response.body && response.body.length && response.body[0][params.specialFields.testRunStepsField]) {
+                  var subTypeArtifactsWithMeta = response.body[0][params.specialFields.testRunStepsField].map(function (sub) {
                     sub.isSubType = true;
-                    sub.parentId = art[idFieldName];
+                    sub.parentId = art[params.specialFields.standardShellField];
+
                     return sub;
-                  });
+                  })
                   // now add the steps into the original object
                   artifactsWithSubTypes = artifactsWithSubTypes.concat(subTypeArtifactsWithMeta);
                 }
               })
             };
+
             artifactsWithSubTypes = [];
+
             var idFieldName = idFieldNameArray[0].field;
             for (var i = 0; i < artifacts2.length; i++) {
               artifactsWithSubTypes.push(artifacts2[i]);
@@ -2931,9 +2944,9 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums, isLastStatusMode) {
             artifacts2 = artifactsWithSubTypes;
           }
         }
-        //At the end, filter the objects again to make sure they belong to the current project before returning
+        //Then, filter the objects again to make sure they belong to the current project
         artifacts = [...artifacts, ...artifacts2];
-        if (!artifacts.length) return 'noData';
+        if (!artifacts) return 'noData';
       }
       if (!artifacts.length) return 'noData';
     }
@@ -2998,24 +3011,8 @@ function processDataFromSpiraExcel(artifacts, model, fieldTypeEnums) {
 
     //9.setting cell borders
     var rangeBorder = sheet.getRangeByIndexes(0, 0, EXCEL_MAX_ROWS, model.fields.length);
+    rangeBorder = setRangeBorders(rangeBorder,model.colors.cellBorder);
 
-    rangeBorder.format.borders.getItem('InsideHorizontal').weight = "Thin";
-    rangeBorder.format.borders.getItem('InsideHorizontal').color = model.colors.cellBorder;
-
-    rangeBorder.format.borders.getItem('InsideVertical').weight = "Thin";
-    rangeBorder.format.borders.getItem('InsideVertical').color = model.colors.cellBorder;
-
-    rangeBorder.format.borders.getItem('EdgeBottom').weight = "Thin";
-    rangeBorder.format.borders.getItem('EdgeBottom').color = model.colors.cellBorder;
-
-    rangeBorder.format.borders.getItem('EdgeLeft').weight = "Thin";
-    rangeBorder.format.borders.getItem('EdgeLeft').color = model.colors.cellBorder;
-
-    rangeBorder.format.borders.getItem('EdgeRight').weight = "Thin";
-    rangeBorder.format.borders.getItem('EdgeRight').color = model.colors.cellBorder;
-
-    rangeBorder.format.borders.getItem('EdgeTop').weight = "Thin";
-    rangeBorder.format.borders.getItem('EdgeTop').color = model.colors.cellBorder;
 
     return context.sync()
       .then(function () {
@@ -3024,6 +3021,33 @@ function processDataFromSpiraExcel(artifacts, model, fieldTypeEnums) {
   })
 
 }
+
+//Function that formats the cell range to have the standard read-only add-in style
+//@param rangeBorder - a cell range to apply the changes
+//@return - the formatted cell range
+function setRangeBorders(rangeBorder, color){
+
+  rangeBorder.format.borders.getItem('InsideHorizontal').weight = "Thin";
+  rangeBorder.format.borders.getItem('InsideHorizontal').color = color;
+
+  rangeBorder.format.borders.getItem('InsideVertical').weight = "Thin";
+  rangeBorder.format.borders.getItem('InsideVertical').color = color;
+
+  rangeBorder.format.borders.getItem('EdgeBottom').weight = "Thin";
+  rangeBorder.format.borders.getItem('EdgeBottom').color = color;
+
+  rangeBorder.format.borders.getItem('EdgeLeft').weight = "Thin";
+  rangeBorder.format.borders.getItem('EdgeLeft').color = color;
+
+  rangeBorder.format.borders.getItem('EdgeRight').weight = "Thin";
+  rangeBorder.format.borders.getItem('EdgeRight').color = color;
+
+  rangeBorder.format.borders.getItem('EdgeTop').weight = "Thin";
+  rangeBorder.format.borders.getItem('EdgeTop').color = color;
+
+  return rangeBorder;
+}
+
 
 // matches data against the fields to be shown in the spreadsheet - not all data fields are shown
 // @param: artifacts - array of the artifact objects we GOT from Spira

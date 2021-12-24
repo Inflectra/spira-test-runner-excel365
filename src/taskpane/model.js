@@ -52,6 +52,8 @@ var params = {
         //TestRunSteps field
         testRunStepsField: "TestRunSteps",
         preCheckField1: "ActualResult",
+        //link to another TC field
+        stardardLinkedTCfield:"LinkedTestCaseId"
     },
     //enum for pre-checking data conditions
     preCheckEnums: {
@@ -113,6 +115,7 @@ documentationURL: "http://spiradoc.inflectra.com/Unit-Testing-Integration/Spread
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system
 var templateFields = {
     testRuns: [
+        { field: "Result", name: "''Send to Spira' Log", type: params.fieldType.text, isReadOnly: true, isComments: true},
         { field: "TestCaseId", name: "Test Case ID", type: params.fieldType.id },
         { field: "TestStepId", name: "Test Step ID", type: params.fieldType.subId, isSubTypeField: true },
         { field: "TestSetId", name: "Test Set ID", type: params.fieldType.id, shellField: true },
@@ -142,7 +145,8 @@ var templateFields = {
         { field: "ProjectId", name: "ProjectId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "Tags", name: "Tags", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "Position", name: "Position", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true },
-        { field: "ConcurrencyDate", name: "ConcurrencyDate", type: params.fieldType.text, isReadOnly: true, isHidden: true }
+        { field: "ConcurrencyDate", name: "ConcurrencyDate", type: params.fieldType.text, isReadOnly: true, isHidden: true },
+        { field: "parentId", name: "parentId", type: params.fieldType.text, isReadOnly: true, isHidden: true }
     ]
 };
 

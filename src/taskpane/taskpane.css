@@ -115,45 +115,6 @@
  
 }
 
-.chkLastStatusMain {
-    padding-right: 10px;
-    padding-left: 5px;
-}
-
-.circleHelp.checked:hover + .helpBox{
-    visibility: visible;
-}
-
-.circleHelp:hover {
-    background-color: rgb(0, 90, 158); 
-}
-
-.helpBox {
-    position: absolute;
-    max-width: 80%;
-    border: 1px solid rgb(180, 180, 180);
-    background-color: rgb(255, 255, 200);
-    border-radius: 8px;
-    left: 10%;
-    top: 30px;
-    padding: 8px;
-    visibility: hidden;
-    z-index: 10;
-}
-
-
-
-.circleHelp {
-    display: flex;
-    height: 20px;
-    width: 20px;
-    border-radius: 50%;
-    background-color:#0078d7;
-    display: flex;
-}
-
-
-
 pre {
     background: #f5f5f5;
     border-radius: 4px;
