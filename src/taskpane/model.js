@@ -145,8 +145,8 @@ var templateFields = {
         { field: "ProjectId", name: "ProjectId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "Tags", name: "Tags", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "Position", name: "Position", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true },
-        { field: "ConcurrencyDate", name: "ConcurrencyDate", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-        { field: "parentId", name: "parentId", type: params.fieldType.text, isReadOnly: true, isHidden: true }
+        { field: "TestCaseId", name: "TestStepTestCaseId", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true },
+        { field: "ConcurrencyDate", name: "ConcurrencyDate", type: params.fieldType.text, isReadOnly: true, isHidden: true }
     ]
 };
 

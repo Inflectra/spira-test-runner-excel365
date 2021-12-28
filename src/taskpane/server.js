@@ -91,7 +91,7 @@ var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
     7: 'TestCaseId'
   },
   TC_ID_COLUMN_INDEX = 1,
-  TS__ID_COLUMN_INDEX = 2,
+  TS_ID_COLUMN_INDEX = 2,
   TX_ID_COLUMN_INDEX = 3;
 
 /*
@@ -1198,12 +1198,8 @@ async function sendToSpira(model, fieldTypeEnums) {
               sheetData = clearErrorMessages(sheetData);
               //First, send the artifact entries for Spira
               var entriesForExport = createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
-              console.log('entriesForExport');
-              console.dir(entriesForExport);
               //Check if the data can actually be sent to Spira
               var preCheckLog = preCheckData(entriesForExport, model);
-              console.log('preCheckLog');
-              console.dir(preCheckLog);
               //only proceed if there's no data pre-validation errors
               if (!preCheckLog.globalFailureStatus) {
                 var extraEntriesForExport = createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, artifact);
@@ -1368,23 +1364,14 @@ function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact)
         // create entry used to populate all relevant data for this row
         entry = {};
 
-        console.log('rowChecks');
-        console.dir(rowChecks);
-
       // first check for errors
       var hasProblems = rowHasProblems(rowChecks);
-      console.log('hasProblems');
-      console.dir(hasProblems);
       if (hasProblems) {
         entry.validationMessage = hasProblems;
         // if error free determine what field filtering is required - needed to choose type/subtype fields if subtype is present
       } else {
         var fieldsToFilter = relevantFields(model.fields);
-        console.log('fieldsToFilter');
-        console.dir(fieldsToFilter);
         entry = createEntryFromRow(rowToPrep, sheetData, model, fieldTypeEnums, lastIndentPosition, fieldsToFilter);
-        console.log('entry');
-        console.dir(entry);
         // FOR SUBTYPE ENTRIES add flag on entry if it is a subtype
         if (entry && fieldsToFilter === FIELD_MANAGEMENT_ENUMS.subType) {
           entry.isSubType = true;
@@ -1394,8 +1381,6 @@ function createExportEntries(sheetData, model, fieldTypeEnums, fields, artifact)
       if (artifact.id == params.artifactEnums.testCases && entry.isSubType) {
         //if this is a testStep, check if the parent is valid
         var validParent = isValidParent(entriesForExport);
-        console.log('validParent');
-        console.dir(validParent);
         if (!validParent) {
           //if the parent is not valid, mark that as an error
           entry = {};
@@ -1569,6 +1554,7 @@ function getAssociationFromResponse(response) {
 
 
 // 5. SET MESSAGES AND FORMATTING ON SHEET
+//       updateSheetWithExportResults(null,          null,            preCheckLog, entriesForExport, null, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context));
 function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
   var extraFieldCounter = 0;
   var row = 0;
