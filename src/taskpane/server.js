@@ -83,7 +83,6 @@ var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
     6: "IntegerValue",
     7: "IntegerListValue",
     8: "IntegerValue"
-
   },
   INLINE_STYLING = "style='font-family: sans-serif'",
   ART_PARENT_IDS = {
