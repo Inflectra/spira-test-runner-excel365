@@ -109,7 +109,8 @@ extraTsFixedFields: {
         })(),
     },
 //documentation URL to be used in error messages
-documentationURL: "http://spiradoc.inflectra.com/Unit-Testing-Integration/Spreadsheet-Test-Runner/"
+documentationURL: "http://spiradoc.inflectra.com/Unit-Testing-Integration/Spreadsheet-Test-Runner/",
+dataSheetName: "database"
 };
 
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system

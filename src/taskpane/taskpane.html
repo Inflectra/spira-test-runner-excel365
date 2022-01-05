@@ -30,7 +30,7 @@
 
     <header class="header">
         <img src="https://files.inflectra.com/office365/TestRunner/assets/icon-32.png" class="header-logo">
-        <h3 class="header-heading">SpiraPlan Test Runner Tool <br>[INT V0]</h3>
+        <h3 class="header-heading">SpiraPlan Test Runner Tool <br>[INT V1]</h3>
     </header>
 
 
@@ -101,7 +101,7 @@
         <h3 id="main-heading-toSpira">3. Prepare to send data to Spira</h3>
 
         <div id="main-guide-1">
-            <p id="main-guide-1-fromSpira">a. Choose which product to get the data</p>
+            <p id="main-guide-1-fromSpira">a. Choose which product to connect</p>
         </div>
         <ul class="form">
             <li class="form-pair">
@@ -120,12 +120,17 @@
 
         <div>
             <p id="main-guide-2" class="pale">
-                b. Start the data transfer with Spira
+                b. Choose where to get the data from
             </p>
             <button class="action ms-Button ms-Button--primary" disabled="true" id="btn-fromSpira" type="button"
-                title="Get data for the specified artifact from SpiraPlan">
+                title="Get TestRun data from SpiraPlan">
                 Get from Spira
             </button>
+            <p></p>
+            <button class="action ms-Button ms-Button--primary" disabled="true" id="btn-fromSheet" type="button"
+            title="Get TestRun data from the current active Excel Worksheet (ideal to upload offline TestRuns)">
+            Use Current Sheet
+        </button>
         </div>
 
         <div>
