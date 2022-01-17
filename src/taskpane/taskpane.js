@@ -25,6 +25,7 @@ Up to know, the advanced features are :
 //ENUMS
 
 var UI_MODE = {
+  initialState: 0,
   newProject: 1,
   newArtifact: 2,
   getData: 3,
@@ -80,7 +81,7 @@ function setDevStuff(devMode) {
     document.getElementById("btn-dev").classList.remove("hidden");
     model.user.url = "";
     model.user.userName = "administrator";
-    model.user.api_key = btoa("&api-key=" + encodeURIComponent("{}"));
+    model.user.api_key = btoa("&api-key=" + encodeURIComponent(""));
 
     loginAttempt();
   }
@@ -196,27 +197,31 @@ function resetSidebar() {
 }
 
 function resetUi() {
-  // disable buttons and dropdowns
-  document.getElementById("btn-fromSpira").disabled = true;
-  document.getElementById("btn-fromSheet").disabled = true;
-  document.getElementById("btn-updateToSpira").disabled = true;
+  try {
+    // disable buttons and dropdowns
+    document.getElementById("btn-fromSpira").disabled = true;
+    document.getElementById("btn-fromSheet").disabled = true;
+    document.getElementById("btn-updateToSpira").disabled = true;
 
-  // hide and clear the template info box
-  document.getElementById("template-project").textContent = "";
+    // reset action buttons
+    document.getElementById("btn-fromSpira").style.display = "";
+    document.getElementById("btn-fromSheet").style.display = "";
+    document.getElementById("btn-updateToSpira").style.display = "";
 
-  // reset action buttons
-  document.getElementById("btn-fromSpira").style.display = "";
-  document.getElementById("btn-fromSheet").style.display = "";
-  document.getElementById("btn-updateToSpira").style.display = "";
+    // reset guide text on the main pane
+    document.getElementById("main-guide-1").classList.remove("pale");
+    document.getElementById("main-guide-1-fromSpira").style.display = "";
+    document.getElementById("main-heading-fromSpira").style.display = "";
+    document.getElementById("main-heading-toSpira").style.display = "";
+    document.getElementById("main-guide-2").classList.add("pale");
+    document.getElementById("main-guide-3").classList.add("pale");
 
-
-  // reset guide text on the main pane
-  document.getElementById("main-guide-1").classList.remove("pale");
-  document.getElementById("main-guide-1-fromSpira").style.display = "";
-  document.getElementById("main-heading-fromSpira").style.display = "";
-  document.getElementById("main-heading-toSpira").style.display = "";
-  document.getElementById("main-guide-2").classList.add("pale");
-  document.getElementById("main-guide-3").classList.add("pale");
+    // hide and clear the template info box
+    document.getElementById("template-project").textContent = "";
+  }
+  catch (err) {
+    //fail quitely
+  }
 }
 
 
@@ -303,6 +308,7 @@ function loginAttempt() {
 
 // login function that starts the intial data creation
 function login() {
+  artifactUpdateUI(UI_MODE.initialState);
   showLoadingSpinner();
   // call server side function to get projects
   // also serves as authentication check, if the user credentials aren't correct it will throw a network error
@@ -410,17 +416,19 @@ function changeProjectSelect(e) {
 
   // if the project field has not been selected all other selected buttons are disabled
   if (e.target.value == 0) {
+    console.log('SOU 0');
     document.getElementById("btn-fromSpira").disabled = true;
     document.getElementById("btn-fromSheet").disabled = true;
+    document.getElementById("btn-updateToSpira").disabled = true;
     uiSelection.currentProject = null;
   } else {
+    console.log('nao SOU 0');
     // get the project object and update project information if project has changed
     var chosenProject = getSelectedProject();
     if (chosenProject.id && chosenProject.id !== uiSelection.currentProject.id) {
       //set the temp data store project to the one selected;
       uiSelection.currentProject = chosenProject;
 
-      //manageTemplateBtnState();
       // kick off API calls
       getProjectSpecificInformation(model.user, uiSelection.currentProject.id);
       // for 6.1 the v6 API for get projects does not get the project template IDs so have to do this
@@ -440,8 +448,12 @@ function changeProjectSelect(e) {
       }
 
 
-      document.getElementById('main-guide-2').style.fontWeight = 'bold';
-      document.getElementById('main-guide-1-fromSpira').style.fontWeight = 'normal';
+      /* document.getElementById('main-guide-2').style.fontWeight = 'bold';
+       document.getElementById('main-guide-1-fromSpira').style.fontWeight = 'normal';
+       document.getElementById('main-guide-2').style.fontWeight = 'normal';
+       //document.getElementById("btn-fromSpira").disabled = false;
+       //document.getElementById("btn-fromSheet").disabled = false;
+       document.getElementById("btn-updateToSpira").disabled = true;*/
     }
   }
 }
@@ -463,6 +475,27 @@ function getTemplateFromProjectId(user, projectId, artifact) {
 function artifactUpdateUI(mode) {
 
   switch (mode) {
+
+    case UI_MODE.initialState:
+      //when re-starting session
+
+      document.getElementById('main-guide-1-fromSpira').style.fontWeight = 'bold';
+      document.getElementById("main-guide-1").classList.remove("pale");
+
+      document.getElementById('main-guide-2').style.fontWeight = 'normal';
+      document.getElementById("main-guide-2").classList.add("pale");
+      document.getElementById("btn-fromSpira").disabled = true;
+      document.getElementById("btn-fromSheet").disabled = true;
+
+      document.getElementById('main-guide-3').style.fontWeight = 'normal';
+      document.getElementById("btn-updateToSpira").disabled = true;
+
+      document.getElementById('btn-fromSpira').classList.remove('ms-Button--default');
+      document.getElementById('btn-fromSheet').classList.remove('ms-Button--default');
+      document.getElementById('btn-fromSheet').classList.add('ms-Button--primary');
+      document.getElementById('btn-fromSpira').classList.add('ms-Button--primary');
+
+      break;
 
     case UI_MODE.newProject:
       //when selecting a new project
@@ -505,6 +538,7 @@ function manageTemplateBtnState() {
 
   // only try to enable the button when both a project and artifact have been chosen
   if (uiSelection.currentProject && uiSelection.currentArtifact) {
+    console.log('TENHO PROJ E ARTEFATO');
     // set a function to run repeatedly until all gets are done
     // then enable the button, and stop the timer loop
     var checkGetsSuccess = setInterval(updateButtonStatus, 500);
@@ -514,19 +548,37 @@ function manageTemplateBtnState() {
     function updateButtonStatus() {
       if (allGetsSucceeded()) {
         if (!document.getElementById("btn-updateToSpira").disabled) {
+          //Send to Spira is active - click on Get from Spira
+          console.log('CASO A');
           //sets the UI to allow update
           document.getElementById("btn-fromSpira").disabled = false;
           document.getElementById("btn-fromSheet").disabled = false;
+
           document.getElementById("main-guide-2").classList.add("pale");
           document.getElementById("main-guide-3").classList.remove("pale");
           document.getElementById("message-fetching-data").style.visibility = "hidden";
         }
         else {
+          //Send to Spira is NOT active - project is selected
+          console.log('CASO B');
           document.getElementById("btn-fromSpira").disabled = false;
           document.getElementById("btn-fromSheet").disabled = false;
+          document.getElementById("btn-updateToSpira").disabled = true;
+
+          document.getElementById('btn-fromSpira').classList.remove('ms-Button--default');
+          document.getElementById('btn-fromSheet').classList.remove('ms-Button--default');
+          document.getElementById('btn-fromSheet').classList.add('ms-Button--primary');
+          document.getElementById('btn-fromSpira').classList.add('ms-Button--primary');
+
           document.getElementById("message-fetching-data").style.visibility = "hidden";
+
           document.getElementById("main-guide-1").classList.add("pale");
           document.getElementById("main-guide-2").classList.remove("pale");
+          document.getElementById("main-guide-3").classList.add("pale");
+
+          document.getElementById('main-guide-1-fromSpira').style.fontWeight = 'normal';
+          document.getElementById('main-guide-2').style.fontWeight = 'bold';
+          document.getElementById('main-guide-3').style.fontWeight = 'normal';
         }
 
         clearInterval(checkGetsSuccess);
