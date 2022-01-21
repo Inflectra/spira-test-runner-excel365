@@ -79,9 +79,9 @@ Office.onReady(info => {
 function setDevStuff(devMode) {
   if (devMode) {
     document.getElementById("btn-dev").classList.remove("hidden");
-    model.user.url = "";
+    model.user.url = "*****";
     model.user.userName = "administrator";
-    model.user.api_key = btoa("&api-key=" + encodeURIComponent(""));
+    model.user.api_key = btoa("&api-key=" + encodeURIComponent("{*****}"));
 
     loginAttempt();
   }
@@ -416,13 +416,11 @@ function changeProjectSelect(e) {
 
   // if the project field has not been selected all other selected buttons are disabled
   if (e.target.value == 0) {
-    console.log('SOU 0');
     document.getElementById("btn-fromSpira").disabled = true;
     document.getElementById("btn-fromSheet").disabled = true;
     document.getElementById("btn-updateToSpira").disabled = true;
     uiSelection.currentProject = null;
   } else {
-    console.log('nao SOU 0');
     // get the project object and update project information if project has changed
     var chosenProject = getSelectedProject();
     if (chosenProject.id && chosenProject.id !== uiSelection.currentProject.id) {
@@ -538,7 +536,6 @@ function manageTemplateBtnState() {
 
   // only try to enable the button when both a project and artifact have been chosen
   if (uiSelection.currentProject && uiSelection.currentArtifact) {
-    console.log('TENHO PROJ E ARTEFATO');
     // set a function to run repeatedly until all gets are done
     // then enable the button, and stop the timer loop
     var checkGetsSuccess = setInterval(updateButtonStatus, 500);
@@ -549,7 +546,6 @@ function manageTemplateBtnState() {
       if (allGetsSucceeded()) {
         if (!document.getElementById("btn-updateToSpira").disabled) {
           //Send to Spira is active - click on Get from Spira
-          console.log('CASO A');
           //sets the UI to allow update
           document.getElementById("btn-fromSpira").disabled = false;
           document.getElementById("btn-fromSheet").disabled = false;
@@ -560,7 +556,6 @@ function manageTemplateBtnState() {
         }
         else {
           //Send to Spira is NOT active - project is selected
-          console.log('CASO B');
           document.getElementById("btn-fromSpira").disabled = false;
           document.getElementById("btn-fromSheet").disabled = false;
           document.getElementById("btn-updateToSpira").disabled = true;

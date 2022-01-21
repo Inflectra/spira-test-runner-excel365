@@ -840,7 +840,7 @@ async function setDropdownValidation(mainSheetName, columnNumber, list, allowInv
   dbSheetRange.values = values;
   context.sync();
   //Now, point the fields in the mainsheet to the database worksheet (source)
-  var range = context.workbook.worksheets.getItem(mainSheetName).getRangeByIndexes(0, columnNumber - 1, nonHeaderRows, 1);
+  var range = context.workbook.worksheets.getItem(mainSheetName).getRangeByIndexes(1, columnNumber - 1, nonHeaderRows, 1);
   range.dataValidation.clear();
 
   range.dataValidation.rule = {
