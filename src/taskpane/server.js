@@ -1641,7 +1641,6 @@ function getAssociationFromResponse(response) {
 
 
 // 5. SET MESSAGES AND FORMATTING ON SHEET
-//       updateSheetWithExportResults(null,          null,            preCheckLog, entriesForExport, null, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context));
 function updateSheetWithExportResults(entriesLog, extraEntriesLog, preCheckingLog, entriesForExport, extraEntriesForExport, sheetData, sheet, sheetRange, model, fieldTypeEnums, fields, artifact, context) {
   var extraFieldCounter = 0;
   var row = 0;
