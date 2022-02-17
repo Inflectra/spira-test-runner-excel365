@@ -547,7 +547,7 @@ function error(type, err) {
     message = 'There was an input error. Please check your network connection and make sure your Spira user can view Test Sets, Test Cases, and Test Steps, as well as create Test Runs and Incidents. Also, make sure you have Test Cases and/or Test Sets assigned to you in this product. For further  information, please refer to the <a href=\"' + params.documentationURL + '\">documentation</a>.';
   } else if (type == "network") {
     message = 'Network error. Please check your username, url, and password. If correct make sure you have the correct permissions.';
-    details = err ? `<br><br>STATUS: ${err.status ? err.status : "unknown"}<br>MESSAGE: ${err.response ? err.response.text : "unknown"}` : "";
+    details = err ? `<br><br><b>STATUS:</b> ${err.status ? err.status : "unknown"}<br><br><b>MESSAGE:</b> ${err.stack ? err.stack : "unknown"}` : "";
   } else if (type == 'excel') {
     message = 'Excel reported an error!';
     details = err ? `<br><br>Description: ${err.description}` : "";
@@ -2732,8 +2732,6 @@ function getFromSheetExcel(model, fieldTypeEnums) {
 
   return Excel.run(function (context) {
     var fields = model.fields;
-    console.log('fields');
-    console.dir(fields);
     var sheet = context.workbook.worksheets.getActiveWorksheet(),
       sheetRange = sheet.getRangeByIndexes(0, 0, 1, 100),
       sheetRangeFull = sheet.getRangeByIndexes(1, 0, EXCEL_MAX_ROWS, fields.length);
@@ -3078,27 +3076,34 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
                 model.currentArtifact.subTypeId,
                 null,
                 null,
-                art[params.specialFields.standardShellField],
-                params.artifactEnums.testCases
+                art[params.specialFields.secondaryShellField],
+                params.artifactEnums.testSets
               ).then(function (response) {
                 // take action if we got any sub types back - ie if they exist for the specific artifact
-                // take action if we got any sub types back - ie if they exist for the specific artifact
-                if (response.body && response.body.length && response.body[0][params.specialFields.testRunStepsField]) {
-                  var subTypeArtifactsWithMeta = response.body[0][params.specialFields.testRunStepsField].map(function (sub) {
-                    sub.isSubType = true;
-                    sub.parentId = art[params.specialFields.standardShellField];
+                if (response.body && response.body.length) {
+                  
+                  for (var i = 0; i < response.body.length; i++) {
 
-                    return sub;
-                  })
-                  // now add the steps into the original object
-                  artifactsWithSubTypes = artifactsWithSubTypes.concat(subTypeArtifactsWithMeta);
+                    if (response.body[i][params.specialFields.testRunStepsField] && response.body[i][params.specialFields.standardTxTsLink]) {
+                      //get the correct Tsteps for this TestCaseTestSet
+                      if (response.body[i][params.specialFields.standardTxTsLink] == art[params.specialFields.standardTxTsLink]) {
+                        var subTypeArtifactsWithMeta = response.body[i][params.specialFields.testRunStepsField].map(function (sub) {
+                          sub.isSubType = true;
+                          sub.parentId = art[params.specialFields.standardShellField];
+                          return sub;
+                        })
+                        // now add the steps into the original object
+                        artifactsWithSubTypes = artifactsWithSubTypes.concat(subTypeArtifactsWithMeta);
+                      }
+                    }
+                  }
                 }
               })
             };
-
             artifactsWithSubTypes = [];
 
             var idFieldName = idFieldNameArray[0].field;
+            //Cases que vem de Sets
             for (var i = 0; i < artifacts2.length; i++) {
               artifactsWithSubTypes.push(artifacts2[i]);
               await getArtifactSubs(artifacts2[i]);

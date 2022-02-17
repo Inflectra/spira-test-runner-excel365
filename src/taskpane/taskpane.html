@@ -30,7 +30,7 @@
 
     <header class="header">
         <img src="https://files.inflectra.com/office365/TestRunner/assets/icon-32.png" class="header-logo">
-        <h3 class="header-heading">SpiraPlan Test Runner Tool <br>[INT V2]</h3>
+        <h3 class="header-heading">SpiraPlan Test Runner Tool <br></h3>
     </header>
 
 
@@ -297,6 +297,14 @@
                             Description, Expected Result, and Actual Result.</small>
                     </p>
                 </li>
+                <li>
+                    <p>
+                        <b>'Send to Spira' Log: </b>
+                        <small>This column will bring important information from the Spira server. Here, you can see warning,
+                             error, and success messages. Remember to always check this column after sending data to Spira to
+                              check if the operation was successful or not.</small>
+                    </p>
+                </li>
             </ul>
             <p>In the spreadsheet, you can see different cell colors. Each of them has a different meaning: </p>
                 <p> 
@@ -313,7 +321,7 @@
                 </p>
                 <p> 
                     <b style="color:red">Red: </b>
-                    <small>means there was an error in the artifact. Hover the cell to read the error message.</small>
+                    <small>means there was an error in the artifact. Check the 'Send to Spira' Log column to read the error message.</small>
                 </p>
         </div>
 
@@ -322,7 +330,8 @@
 
             <p>Once you have finished testing and populating the green/white fields of the spreadsheet,
                 make sure you are connected to the internet, then click on the 'Send to Spira' button to 
-                have the Add-In connect with SpiraTeam and upload the data to the server. </p>
+                have the Add-In connect with SpiraTeam and upload the data to the server. If you are 
+                importing data from a previously saved spreadsheet, click on 'Use Current Sheet' instead. </p>
             <p>If everything ends up fine, you should see a comment on each Test Case ID cell containing 
                 the just-created Test Run ID (and also in the Incidents column, if any). If the add-in had 
                 any problem creating the Test Runs and/or Incidents in Spira, you should see red cells 

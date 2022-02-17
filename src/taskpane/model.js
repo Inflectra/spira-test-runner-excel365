@@ -53,7 +53,9 @@ var params = {
         testRunStepsField: "TestRunSteps",
         preCheckField1: "ActualResult",
         //link to another TC field
-        stardardLinkedTCfield:"LinkedTestCaseId"
+        stardardLinkedTCfield:"LinkedTestCaseId",
+        //link between a TestSet Test Case and a Test Case
+        standardTxTsLink:"TestSetTestCaseId",
     },
     //enum for pre-checking data conditions
     preCheckEnums: {
