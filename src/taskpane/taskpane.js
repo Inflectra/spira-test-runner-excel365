@@ -11,7 +11,7 @@ var model = new Data();
 var uiSelection = new tempDataStore();
 
 // if devmode enabled, set the required fields and show the dev button
-var devMode = true;
+var devMode = false;
 
 /*
 Global Variable to control if advanced options should be enabled to the user
