@@ -1518,7 +1518,7 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
           var association = null;
           if (!response.error) {
             //get the association TestRunStepID - TestStepID
-            association = getAssociationFromResponse(response.fromSpira);
+            association = getAssociationFromResponse(response.fromSpira, i);
             log.associations = [...log.associations, ...association];
           }
           // update the parent ID for a subtypes based on the successful API call
@@ -1570,7 +1570,6 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
     async function sendSingleExtraEntry(k) {
       //First, assign the correct TestRunStepID to each Incident object
       var convertedEntry = await convertExtraEntry(extraEntriesForExport[k], fieldsAssociations);
-
       //Then, get the Incident object from the model
       let incidentObject = { id: params.artifactEnums.incidents };
 
@@ -1596,7 +1595,8 @@ async function sendExportEntriesExcel(entriesForExport, extraEntriesForExport, m
 //@return the newIncident object containing the correct association 
 async function convertExtraEntry(newIncident, fieldsAssociations) {
   fieldsAssociations.forEach(function (association) {
-    if (association[params.specialFields.standardAssociationField] == newIncident[params.specialFields.secondaryAssociationField]) {
+    if ((association[params.specialFields.standardAssociationField] == newIncident[params.specialFields.secondaryAssociationField]) &&
+      (newIncident.position == association.position)) {
       //if this is the Test Step we are looking for, associate it with the RunStepID
       newIncident[params.specialFields.secondaryAssociationField + 's'] = [association[params.specialFields.secondaryAssociationField]];
       delete newIncident[params.specialFields.secondaryAssociationField];
@@ -1612,7 +1612,7 @@ async function convertExtraEntry(newIncident, fieldsAssociations) {
 //in case the user wants to log an Incident from it
 //input: the raw response of PUT Test Run from the server
 //output: the association output object
-function getAssociationFromResponse(response) {
+function getAssociationFromResponse(response, i) {
   var associations = [];
   var objResponse = JSON.parse(response);
   //make sure we have the necessary data
@@ -1621,11 +1621,11 @@ function getAssociationFromResponse(response) {
       var association = {};
       if (item[params.specialFields.standardAssociationField]) {
         association[params.specialFields.standardAssociationField] = item[params.specialFields.standardAssociationField];
+        association.position = i;
       }
       if (item[params.specialFields.secondaryAssociationField]) {
         association[params.specialFields.secondaryAssociationField] = item[params.specialFields.secondaryAssociationField];
       }
-
       if (Object.keys(association).length > 1) {
         associations.push(association);
       }
@@ -2056,6 +2056,9 @@ function createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, arti
   var entriesForExport = [];
   var fields = model.fields;
 
+  //count the future Test Run position - useful to avoid mismatches when there're duplicate TestCases in the spreadsheet
+  var trCounter = -1;
+
   for (var rowToPrep = 0; rowToPrep < sheetData.length; rowToPrep++) {
     // stop at the first row that is fully blank
     if (sheetData[rowToPrep].join("") === "") {
@@ -2067,10 +2070,13 @@ function createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, arti
       var description = "<p>";
       var parentId = 0;
 
+
+
       //going thru all the columns
       for (var i = 0; i < sheetData[rowToPrep].length; i++) {
 
-        //1. Make sure this is a Test Step
+        //1. Make sure this is a Test Step.
+
         if (sheetData[rowToPrep][TC_ID_COLUMN_INDEX] == '-1' || sheetData[rowToPrep][TC_ID_COLUMN_INDEX] == '') {
 
           if (fields[i].type == fieldTypeEnums.subId) {
@@ -2091,8 +2097,14 @@ function createExtraExportEntries(sheetData, model, fieldTypeEnums, fields, arti
             entry.Description = description;
             //create the association field (to be replaced)
             entry[params.specialFields.secondaryAssociationField] = parentId;
+            entry.position = trCounter;
           }
         }
+      }
+
+      // If it a Test Case, increase the TR counter
+      if (sheetData[rowToPrep][TC_ID_COLUMN_INDEX] != '-1' && sheetData[rowToPrep][TC_ID_COLUMN_INDEX] != '') {
+        trCounter++;
       }
 
       if (Object.keys(entry).length != 0) {
@@ -3081,7 +3093,7 @@ async function getDataFromSpiraExcel(model, fieldTypeEnums) {
               ).then(function (response) {
                 // take action if we got any sub types back - ie if they exist for the specific artifact
                 if (response.body && response.body.length) {
-                  
+
                   for (var i = 0; i < response.body.length; i++) {
 
                     if (response.body[i][params.specialFields.testRunStepsField] && response.body[i][params.specialFields.standardTxTsLink]) {
