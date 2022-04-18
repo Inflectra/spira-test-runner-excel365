@@ -25,6 +25,7 @@ import { showPanel, hidePanel } from './taskpane.js';
 
 import { params } from './model.js';
 
+
 // globals
 var API_PROJECT_BASE = '/services/v6_0/RestService.svc/projects/',
   API_URL_BASE = '/services/v6_0/RestService.svc/',
