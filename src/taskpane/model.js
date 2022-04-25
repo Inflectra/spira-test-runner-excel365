@@ -111,7 +111,7 @@ extraTsFixedFields: {
         })(),
     },
 //documentation URL to be used in error messages
-documentationURL: "http://spiradoc.inflectra.com/Unit-Testing-Integration/Spreadsheet-Test-Runner/",
+documentationURL: "https://spiradoc.inflectra.com/Migration-and-Integration/Using-Test-Runner-For-Excel/",
 dataSheetName: "database"
 };
 
