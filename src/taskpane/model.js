@@ -53,7 +53,9 @@ var params = {
         testRunStepsField: "TestRunSteps",
         preCheckField1: "ActualResult",
         //link to another TC field
-        stardardLinkedTCfield:"LinkedTestCaseId"
+        stardardLinkedTCfield:"LinkedTestCaseId",
+        //link between a TestSet Test Case and a Test Case
+        standardTxTsLink:"TestSetTestCaseId",
     },
     //enum for pre-checking data conditions
     preCheckEnums: {
@@ -109,7 +111,8 @@ extraTsFixedFields: {
         })(),
     },
 //documentation URL to be used in error messages
-documentationURL: "http://spiradoc.inflectra.com/Unit-Testing-Integration/Spreadsheet-Test-Runner/"
+documentationURL: "https://spiradoc.inflectra.com/Migration-and-Integration/Using-Test-Runner-For-Excel/",
+dataSheetName: "database"
 };
 
 // each artifact has all its standard fields listed, along with important metadata - display name, field type, hard coded values set by system
@@ -145,8 +148,8 @@ var templateFields = {
         { field: "ProjectId", name: "ProjectId", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "Tags", name: "Tags", type: params.fieldType.text, isReadOnly: true, isHidden: true },
         { field: "Position", name: "Position", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true },
-        { field: "ConcurrencyDate", name: "ConcurrencyDate", type: params.fieldType.text, isReadOnly: true, isHidden: true },
-        { field: "parentId", name: "parentId", type: params.fieldType.text, isReadOnly: true, isHidden: true }
+        { field: "TestCaseId", name: "TestStepTestCaseId", type: params.fieldType.text, isSubTypeField: true, isReadOnly: true, isHidden: true },
+        { field: "ConcurrencyDate", name: "ConcurrencyDate", type: params.fieldType.text, isReadOnly: true, isHidden: true }
     ]
 };
 
