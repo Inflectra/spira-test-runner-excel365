@@ -10,14 +10,14 @@
   <DefaultLocale>en-US</DefaultLocale>
   
   <!-- Used on the store and various places of the Office UI such as the add-ins dialog. -->
-  <DisplayName DefaultValue="SpiraPlan Test Runner Tool"/>
-  <Description DefaultValue="Get and send information with your SpiraTest/Team/Plan application"/>
+  <DisplayName DefaultValue="SpiraPlan Test Runner"/>
+  <Description DefaultValue="Run your assigned SpiraTest/Team/Plan tests offline and then upload them back to SpiraPlan"/>
   
   <!-- Used on installation screens and the add-ins dialog. -->
   <IconUrl DefaultValue="https://files.inflectra.com/office365/TestRunner/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://files.inflectra.com/office365/TestRunner/assets/icon-80.png"/>
   
-  <SupportUrl DefaultValue="http://spiradoc.inflectra.com/Migration-and-Integration/Importing-from-Microsoft-Excel-(Office365)/"/>
+  <SupportUrl DefaultValue="https://spiradoc.inflectra.com/Migration-and-Integration/Using-Test-Runner-For-Excel/"/>
 
   <!-- Domains that will be allowed when navigating. For example, if you use ShowTaskpane and then have an href link, navigation will only be allowed if the domain is on this list. -->
   <AppDomains>
@@ -39,8 +39,8 @@
   </Requirements>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://localhost:3000/taskpane.html"/>
-    <!-- <SourceLocation DefaultValue="https://files.inflectra.com/office365/excel2/taskpane.html"/> -->
+    <!-- <SourceLocation DefaultValue="https://localhost:3000/taskpane.html"/> -->
+    <SourceLocation DefaultValue="https://files.inflectra.com/office365/TestRunner/taskpane.html"/>
   </DefaultSettings>
   <!-- End TaskPane Mode integration.  -->
 
@@ -99,19 +99,19 @@
       </bt:Images>
       <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://go.microsoft.com/fwlink/?LinkId=276812"/>
-        <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000/commands.html"/>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
-        <!-- <bt:Url id="Commands.Url" DefaultValue="https://files.inflectra.com/office365/excel2/commands.html"/>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://files.inflectra.com/office365/excel2/taskpane.html"/> -->
+        <!-- <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000/commands.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/> -->
+        <bt:Url id="Commands.Url" DefaultValue="https://files.inflectra.com/office365/TestRunner/commands.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://files.inflectra.com/office365/TestRunner/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="Get started with the SpiraPlan add-in!"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Get started with the SpiraPlan Test Runner add-in!"/>
         <bt:String id="CommandsGroup.Label" DefaultValue="SpiraPlan"/>
         <bt:String id="TaskpaneButton.Label" DefaultValue="Spira Test Runner"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="The SpiraPlan add-in loaded succesfully. Go to the HOME tab and click the 'Show SpiraPlan Taskpane' button to get started."/>
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Click to Show the SpiraPlan Taskpane"/>
+        <bt:String id="GetStarted.Description" DefaultValue="The SpiraPlan Test Runner add-in loaded succesfully. Go to the HOME tab and click the 'Show Test Runner Taskpane' button to get started."/>
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Click to Show the Test Runner Taskpane"/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
