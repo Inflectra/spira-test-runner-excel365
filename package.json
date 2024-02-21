@@ -45,7 +45,7 @@
     "office-addin-debugging": "^4.3.9",
     "office-addin-dev-certs": "^1.11.3",
     "office-addin-lint": "^2.2.5",
-    "office-addin-manifest": "^1.12.4",
+    "office-addin-manifest": "^1.12.10",
     "office-addin-prettier-config": "^1.2.0",
     "source-map-loader": "^4.0.1",
     "ts-loader": "^9.4.2",
